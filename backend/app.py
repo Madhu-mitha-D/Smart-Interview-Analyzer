@@ -1,14 +1,14 @@
-from flask import Flask, jsonify
-from flask_cors import CORS
+from fastapi import FastAPI
 
-app = Flask(__name__)
-CORS(app)
+from backend.database.database import engine
+from backend.models.interview_model import Base
+from backend.routes.analysis_routes import router as analytics_router
+import backend.routes.interview_routes as interview_module
 
-@app.route('/')
-def home():
-    return jsonify({
-        "message": "Smart Interview Analyzer Backend Running"
-    })
+app = FastAPI()
 
-if __name__ == '__main__':
-    app.run(debug=True)
+Base.metadata.create_all(bind=engine)
+
+app.include_router(interview_module.router)
+
+app.include_router(analytics_router)
