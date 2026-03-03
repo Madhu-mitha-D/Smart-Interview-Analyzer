@@ -21,9 +21,9 @@ def _std(values):
     return round(math.sqrt(variance), 2)
 
 
-def build_insights(session_id: str, db: Session):
+def build_insights(session_id: str, db: Session, user_id: int):
     interview = db.execute(
-        select(Interview).where(Interview.session_id == session_id)
+        select(Interview).where(Interview.session_id == session_id, Interview.user_id == user_id)
     ).scalar_one_or_none()
 
     if not interview:

@@ -1,4 +1,3 @@
-# backend/services/interview_service.py
 import uuid
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -9,14 +8,15 @@ from backend.services.question_service import get_questions
 from backend.services.scoring_service import score_answer
 from backend.services.adaptive_service import adjust_difficulty
 
-def create_interview(db: Session, domain: str, difficulty: str):
+def create_interview(db: Session, user_id: int, domain: str, difficulty: str):
     questions = get_questions(domain, difficulty)
     session_id = str(uuid.uuid4())
 
     interview = Interview(
         session_id=session_id,
+        user_id=user_id,                 # ✅ store owner
         domain=domain,
-        difficulty=difficulty,          # we will adapt this as current difficulty
+        difficulty=difficulty,
         current_question=0,
         total_question=len(questions),
         total_score=0,
@@ -25,16 +25,20 @@ def create_interview(db: Session, domain: str, difficulty: str):
     )
     db.add(interview)
     db.commit()
+    db.refresh(interview)
 
     return interview, questions[0]
 
-def submit_interview_answer(db: Session, session_id: str, answer: str):
+def submit_interview_answer(db: Session, user_id: int, session_id: str, answer: str):
     interview = db.execute(
-        select(Interview).where(Interview.session_id == session_id)
+        select(Interview).where(
+            Interview.session_id == session_id,
+            Interview.user_id == user_id      # ✅ owner check
+        )
     ).scalar_one_or_none()
 
     if not interview:
-        raise ValueError("Session not found")
+        raise ValueError("Session not found (or not owned by user)")
 
     questions = get_questions(interview.domain, interview.difficulty)
 
@@ -44,7 +48,8 @@ def submit_interview_answer(db: Session, session_id: str, answer: str):
     idx = interview.current_question
     q_text = questions[idx]
 
-    score, feedback, sim, quality = score_answer(answer, idx)
+    # scoring returns 4 values
+    score, feedback, sim, quality = score_answer(answer, idx, question_text=q_text, domain=interview.domain)
 
     ans = Answer(
         interview_id=interview.id,
@@ -57,22 +62,20 @@ def submit_interview_answer(db: Session, session_id: str, answer: str):
     )
     db.add(ans)
 
-    # Advance
     interview.current_question += 1
 
-    # Compute running avg on answered questions
-    all_scores = db.execute(
+    # running avg
+    prev_scores = db.execute(
         select(Answer.score).where(Answer.interview_id == interview.id)
     ).scalars().all()
-    all_scores = [s or 0 for s in all_scores] + [score]  # include this one
-    avg_so_far = round(sum(all_scores) / len(all_scores), 2)
+    prev_scores = [s or 0 for s in prev_scores] + [score]
+    avg_so_far = round(sum(prev_scores) / len(prev_scores), 2)
 
-    # ✅ Adaptive difficulty per answer
+    # adaptive difficulty
     interview.difficulty = adjust_difficulty(interview.difficulty, score, avg_so_far)
 
-    # If finished -> finalize
+    # finalize
     if interview.current_question >= len(questions):
-        # reload all answers ordered
         all_answers = db.execute(
             select(Answer)
             .where(Answer.interview_id == interview.id)
@@ -114,7 +117,7 @@ def submit_interview_answer(db: Session, session_id: str, answer: str):
             ]
         }
 
-    # Not finished -> get next question (for updated difficulty we fetch again)
+    # next question after adapting difficulty
     next_questions = get_questions(interview.domain, interview.difficulty)
     next_q = next_questions[interview.current_question]
 
