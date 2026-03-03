@@ -1,5 +1,6 @@
 # backend/app.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from backend.database.database import engine, Base
 
 # IMPORTANT: import models so Base knows them before create_all
@@ -20,3 +21,10 @@ app.include_router(auth_router)
 app.include_router(interview_module.router)
 app.include_router(analytics_router)
 app.include_router(insights_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
