@@ -1,6 +1,7 @@
+# backend/services/interview_service.py
 import uuid
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from backend.models.interview_model import Interview
 from backend.models.answer_model import Answer
@@ -8,13 +9,17 @@ from backend.services.question_service import get_questions
 from backend.services.scoring_service import score_answer
 from backend.services.adaptive_service import adjust_difficulty
 
+
+# =========================
+# CREATE INTERVIEW (WITH USER)
+# =========================
 def create_interview(db: Session, user_id: int, domain: str, difficulty: str):
     questions = get_questions(domain, difficulty)
     session_id = str(uuid.uuid4())
 
     interview = Interview(
         session_id=session_id,
-        user_id=user_id,                 # ✅ store owner
+        user_id=user_id,  # ✅ important
         domain=domain,
         difficulty=difficulty,
         current_question=0,
@@ -23,17 +28,27 @@ def create_interview(db: Session, user_id: int, domain: str, difficulty: str):
         verdict=None,
         is_completed=False
     )
+
     db.add(interview)
     db.commit()
     db.refresh(interview)
 
     return interview, questions[0]
 
-def submit_interview_answer(db: Session, user_id: int, session_id: str, answer: str):
+
+# =========================
+# SUBMIT ANSWER (OWNER SAFE)
+# =========================
+def submit_interview_answer(
+    db: Session,
+    user_id: int,
+    session_id: str,
+    answer: str
+):
     interview = db.execute(
         select(Interview).where(
             Interview.session_id == session_id,
-            Interview.user_id == user_id      # ✅ owner check
+            Interview.user_id == user_id  # ✅ owner check
         )
     ).scalar_one_or_none()
 
@@ -48,8 +63,13 @@ def submit_interview_answer(db: Session, user_id: int, session_id: str, answer: 
     idx = interview.current_question
     q_text = questions[idx]
 
-    # scoring returns 4 values
-    score, feedback, sim, quality = score_answer(answer, idx, question_text=q_text, domain=interview.domain)
+    # ✅ improved scoring call (with context)
+    score, feedback, sim, quality = score_answer(
+        answer,
+        idx,
+        question_text=q_text,
+        domain=interview.domain
+    )
 
     ans = Answer(
         interview_id=interview.id,
@@ -64,17 +84,24 @@ def submit_interview_answer(db: Session, user_id: int, session_id: str, answer: 
 
     interview.current_question += 1
 
-    # running avg
-    prev_scores = db.execute(
+    # running average
+    all_scores = db.execute(
         select(Answer.score).where(Answer.interview_id == interview.id)
     ).scalars().all()
-    prev_scores = [s or 0 for s in prev_scores] + [score]
-    avg_so_far = round(sum(prev_scores) / len(prev_scores), 2)
+
+    all_scores = [s or 0 for s in all_scores] + [score]
+    avg_so_far = round(sum(all_scores) / len(all_scores), 2)
 
     # adaptive difficulty
-    interview.difficulty = adjust_difficulty(interview.difficulty, score, avg_so_far)
+    interview.difficulty = adjust_difficulty(
+        interview.difficulty,
+        score,
+        avg_so_far
+    )
 
-    # finalize
+    # =========================
+    # FINISH
+    # =========================
     if interview.current_question >= len(questions):
         all_answers = db.execute(
             select(Answer)
@@ -117,7 +144,9 @@ def submit_interview_answer(db: Session, user_id: int, session_id: str, answer: 
             ]
         }
 
-    # next question after adapting difficulty
+    # =========================
+    # CONTINUE
+    # =========================
     next_questions = get_questions(interview.domain, interview.difficulty)
     next_q = next_questions[interview.current_question]
 
@@ -135,3 +164,97 @@ def submit_interview_answer(db: Session, user_id: int, session_id: str, answer: 
         "next_question_index": interview.current_question,
         "next_question": next_q
     }
+
+
+# =========================
+# LIST USER INTERVIEWS
+# =========================
+def list_user_interviews(db: Session, user_id: int):
+    interviews = db.execute(
+        select(Interview)
+        .where(Interview.user_id == user_id)
+        .order_by(Interview.id.desc())
+    ).scalars().all()
+
+    return [
+        {
+            "session_id": i.session_id,
+            "domain": i.domain,
+            "difficulty": i.difficulty,
+            "total_score": i.total_score,
+            "verdict": i.verdict,
+            "is_completed": i.is_completed,
+            "current_question": i.current_question,
+            "total_question": i.total_question,
+        }
+        for i in interviews
+    ]
+
+
+# =========================
+# RESUME INTERVIEW
+# =========================
+def get_interview_state(db: Session, user_id: int, session_id: str):
+    interview = db.execute(
+        select(Interview).where(
+            Interview.session_id == session_id,
+            Interview.user_id == user_id,
+        )
+    ).scalar_one_or_none()
+
+    if not interview:
+        raise ValueError("Session not found (or not owned by user)")
+
+    questions = get_questions(interview.domain, interview.difficulty)
+
+    if interview.is_completed or interview.current_question >= len(questions):
+        return {
+            "finished": True,
+            "session_id": interview.session_id,
+            "domain": interview.domain,
+            "difficulty": interview.difficulty,
+            "current_question": interview.current_question,
+            "total_question": interview.total_question,
+            "total_score": interview.total_score,
+            "verdict": interview.verdict,
+        }
+
+    idx = interview.current_question
+    q = questions[idx]
+
+    # ✅ return BOTH styles (safe for frontend)
+    return {
+        "finished": False,
+        "session_id": interview.session_id,
+        "domain": interview.domain,
+        "difficulty": interview.difficulty,
+
+        "question_index": idx,     # your old key
+        "question": q,             # your old key
+
+        "current_question": idx,   # extra (some UIs prefer this)
+        "next_question": q,        # extra (some UIs prefer this)
+
+        "total_question": interview.total_question,
+    }
+
+# =========================
+# DELETE INTERVIEW
+# =========================
+def delete_interview_session(db: Session, user_id: int, session_id: str):
+    interview = db.execute(
+        select(Interview).where(
+            Interview.session_id == session_id,
+            Interview.user_id == user_id,
+        )
+    ).scalar_one_or_none()
+
+    if not interview:
+        raise ValueError("Session not found (or not owned by user)")
+
+    db.execute(delete(Answer).where(Answer.interview_id == interview.id))
+    db.execute(delete(Interview).where(Interview.id == interview.id))
+
+    db.commit()
+
+    return {"deleted": True, "session_id": session_id}

@@ -1,6 +1,6 @@
 # backend/routes/insights_routes.py
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database.deps import get_db
@@ -15,6 +15,7 @@ router = APIRouter(tags=["Insights"])
 def insights(
     session_id: str,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
 ):
+    # build_insights signature: (session_id, db, user_id)
     return build_insights(session_id, db, user.id)
