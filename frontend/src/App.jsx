@@ -1,41 +1,29 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
 
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import Interview from "./pages/Interview.jsx";
-
-function Protected({ children }) {
-  const token = localStorage.getItem("token");
-  return token ? children : <Navigate to="/login" replace />;
-}
+import Dashboard from "./pages/Dashboard";
+import Interview from "./pages/Interview";
+import Insights from "./pages/Insights";
+import Analytics from "./pages/Analytics";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <Protected>
-              <Dashboard />
-            </Protected>
-          }
-        />
-
-        <Route
-          path="/interview"
-          element={
-            <Protected>
-              <Interview />
-            </Protected>
-          }
-        />
-
-        <Route path="/login" element={<Login onLogin={() => (window.location.href = "/")} />} />
+        {/* Public routes (NO Layout) */}
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Protected / main app routes (WITH Layout) */}
+        <Route element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="/" element={<Dashboard />} /> {/* optional but safe */}
+          <Route path="/interview" element={<Interview />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/analytics" element={<Analytics />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
