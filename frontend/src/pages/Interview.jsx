@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api/axios";
+import AudioRecorder from "../components/AudioRecorder";
+import { PrimaryButton, GhostButton, DangerButton } from "../components/Buttons";
+
+const SECONDS_PER_QUESTION = 90;
 
 export default function Interview() {
   const nav = useNavigate();
@@ -14,19 +18,174 @@ export default function Interview() {
   const [loadingStart, setLoadingStart] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [loadingResume, setLoadingResume] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
 
   const [finalReport, setFinalReport] = useState(null);
 
-  // Choose domain/difficulty
+  // Choose domain/difficulty (used only when starting new)
   const [domain, setDomain] = useState("hr");
   const [difficulty, setDifficulty] = useState("easy");
+
+  // Timer
+  const [secondsLeft, setSecondsLeft] = useState(SECONDS_PER_QUESTION);
+  const [timeUp, setTimeUp] = useState(false);
+  const autoSubmittedRef = useRef(false);
 
   const forceLogout = () => {
     localStorage.removeItem("token");
     nav("/login", { replace: true });
   };
 
-  // ✅ Resume if session_id present
+  // Reset timer whenever question changes / new session starts
+  useEffect(() => {
+    if (!session || finalReport) return;
+    setSecondsLeft(SECONDS_PER_QUESTION);
+    setTimeUp(false);
+    autoSubmittedRef.current = false;
+  }, [session?.session_id, session?.question_index, finalReport]);
+
+  // Countdown tick
+  useEffect(() => {
+    if (!session || finalReport) return;
+
+    if (secondsLeft <= 0) {
+      setTimeUp(true);
+      return;
+    }
+
+    const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [secondsLeft, session, finalReport]);
+
+  const start = async () => {
+    setMsg("");
+    setFinalReport(null);
+    setSession(null);
+    setAnswer("");
+    setLoadingStart(true);
+
+    try {
+      const res = await api.post("/start-interview", { domain, difficulty });
+      setSession(res.data);
+      setSp({}); // clear resume query
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Failed to start interview");
+    } finally {
+      setLoadingStart(false);
+    }
+  };
+
+  const submit = async (forcedAnswer) => {
+    if (!session) return;
+
+    const payloadAnswer =
+      typeof forcedAnswer === "string"
+        ? forcedAnswer.trim()
+        : (answer || "").trim();
+
+    // If manual submit and empty -> block
+    if (forcedAnswer === undefined && !payloadAnswer) {
+      setMsg("⚠️ Type an answer before submitting.");
+      return;
+    }
+
+    setMsg("");
+    setLoadingSubmit(true);
+
+    try {
+      const res = await api.post("/submit-answer", {
+        session_id: session.session_id,
+        answer: payloadAnswer || "(No answer)",
+      });
+
+      setAnswer("");
+
+      if (res.data.finished) {
+        setFinalReport(res.data);
+        setMsg("🎉 Interview Finished!");
+      } else {
+        setSession((prev) => ({
+          ...prev,
+          question_index: res.data.next_question_index,
+          question: res.data.next_question,
+          // keep if backend changes difficulty adaptively
+          difficulty: res.data.current_difficulty || prev.difficulty,
+        }));
+
+        setMsg(
+          `Score: ${res.data.score} | Similarity: ${Number(
+            res.data.similarity
+          ).toFixed(2)}`
+        );
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Submit failed");
+    } finally {
+      setLoadingSubmit(false);
+    }
+  };
+
+  // Auto-submit ONCE when time is up
+  useEffect(() => {
+    if (!timeUp || !session || finalReport) return;
+    if (autoSubmittedRef.current) return;
+
+    autoSubmittedRef.current = true;
+    submit("(Time up) " + ((answer || "").trim() || "(No answer)"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp]);
+
+  // Audio upload
+  const submitAudio = async (blob) => {
+    if (!session?.session_id) {
+      setMsg("Start/resume an interview before sending audio.");
+      return;
+    }
+
+    setUploadingAudio(true);
+    setMsg("");
+
+    try {
+      const form = new FormData();
+      form.append("session_id", session.session_id);
+      form.append("file", blob, "answer.webm");
+
+      const res = await api.post("/audio/submit-answer", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Same flow as text submit
+      if (res.data.finished) {
+        setFinalReport(res.data);
+        setMsg("🎉 Interview Finished!");
+      } else {
+        setSession((prev) => ({
+          ...prev,
+          question_index: res.data.next_question_index,
+          question: res.data.next_question,
+          difficulty: res.data.current_difficulty || prev.difficulty,
+        }));
+
+        setMsg(
+          `Audio scored ✅ Score: ${res.data.score} | Similarity: ${Number(
+            res.data.similarity
+          ).toFixed(2)}`
+        );
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Audio submit failed");
+    } finally {
+      setUploadingAudio(false);
+    }
+  };
+
+  // Resume if session_id present
   useEffect(() => {
     if (!resumeSessionId) return;
 
@@ -34,26 +193,29 @@ export default function Interview() {
       setLoadingResume(true);
       setMsg("");
       setFinalReport(null);
+      setAnswer("");
 
       try {
-        const res = await api.get(`/interviews/${encodeURIComponent(resumeSessionId)}`);
+        const res = await api.get(
+          `/interviews/${encodeURIComponent(resumeSessionId)}/state`
+        );
         const data = res.data;
 
         if (data.finished) {
-          // This is "resume state" finished (no detailed report)
           setFinalReport({
             finished: true,
             message: "Interview already completed",
             total_score: data.total_score,
             verdict: data.verdict,
-            // average_score may not exist in resume response
             average_score: null,
           });
+
           setSession({
             session_id: data.session_id,
             domain: data.domain,
             difficulty: data.difficulty,
-            question_index: data.current_question ?? data.current_question_index ?? 0,
+            question_index:
+              data.current_question ?? data.current_question_index ?? 0,
             question: "",
           });
         } else {
@@ -69,8 +231,7 @@ export default function Interview() {
         const status = err?.response?.status;
         if (status === 401) return forceLogout();
         setMsg(err?.response?.data?.detail || "Failed to resume interview");
-        // If resume fails, remove query so user can start fresh
-        setSp({});
+        setSp({}); // remove broken query
       } finally {
         setLoadingResume(false);
       }
@@ -78,70 +239,10 @@ export default function Interview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeSessionId]);
 
-  const start = async () => {
-    setMsg("");
-    setFinalReport(null);
-    setSession(null);
-    setLoadingStart(true);
-
-    try {
-      const res = await api.post("/start-interview", { domain, difficulty });
-      setSession(res.data);
-      // ✅ clear any old resume query
-      setSp({});
-    } catch (err) {
-      const status = err?.response?.status;
-      if (status === 401) return forceLogout();
-      setMsg(err?.response?.data?.detail || "Failed to start interview");
-    } finally {
-      setLoadingStart(false);
-    }
-  };
-
-  const submit = async () => {
-    if (!session) return;
-
-    const trimmed = (answer || "").trim();
-    if (!trimmed) {
-      setMsg("⚠️ Type an answer before submitting.");
-      return;
-    }
-
-    setMsg("");
-    setLoadingSubmit(true);
-
-    try {
-      const res = await api.post("/submit-answer", {
-        session_id: session.session_id,
-        answer: trimmed,
-      });
-
-      setAnswer("");
-
-      if (res.data.finished) {
-        setFinalReport(res.data);
-        setMsg("🎉 Interview Finished!");
-      } else {
-        setSession((prev) => ({
-          ...prev,
-          question_index: res.data.next_question_index,
-          question: res.data.next_question,
-        }));
-
-        setMsg(
-          `Score: ${res.data.score} | Similarity: ${Number(res.data.similarity).toFixed(2)}`
-        );
-      }
-    } catch (err) {
-      const status = err?.response?.status;
-      if (status === 401) return forceLogout();
-      setMsg(err?.response?.data?.detail || "Submit failed");
-    } finally {
-      setLoadingSubmit(false);
-    }
-  };
-
   const sid = session?.session_id || resumeSessionId;
+
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const ss = String(secondsLeft % 60).padStart(2, "0");
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
@@ -200,19 +301,26 @@ export default function Interview() {
 
             <p className="text-white/70">
               Total Score:{" "}
-              <span className="text-white font-semibold">{finalReport.total_score ?? "—"}</span>
-              {finalReport.average_score !== null && finalReport.average_score !== undefined ? (
+              <span className="text-white font-semibold">
+                {finalReport.total_score ?? "—"}
+              </span>
+              {finalReport.average_score !== null &&
+              finalReport.average_score !== undefined ? (
                 <>
                   {" "}
                   | Avg:{" "}
-                  <span className="text-white font-semibold">{finalReport.average_score}</span>
+                  <span className="text-white font-semibold">
+                    {finalReport.average_score}
+                  </span>
                 </>
               ) : null}
             </p>
 
             <p className="text-white/70">
               Verdict:{" "}
-              <span className="text-white font-semibold">{finalReport.verdict ?? "—"}</span>
+              <span className="text-white font-semibold">
+                {finalReport.verdict ?? "—"}
+              </span>
             </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
@@ -242,10 +350,11 @@ export default function Interview() {
               </button>
             </div>
 
-            {/* Keep raw report only for debugging */}
             {finalReport?.detailed_report ? (
               <details className="pt-2">
-                <summary className="cursor-pointer text-white/80">See raw report</summary>
+                <summary className="cursor-pointer text-white/80">
+                  See raw report
+                </summary>
                 <pre className="mt-2 text-xs bg-black/40 p-3 rounded-xl overflow-auto">
                   {JSON.stringify(finalReport, null, 2)}
                 </pre>
@@ -256,12 +365,30 @@ export default function Interview() {
           </div>
         ) : (
           <div className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="text-white/70 text-sm">
-              Session: <span className="text-white">{session.session_id}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-white/70 text-sm">
+                Session: <span className="text-white">{session.session_id}</span>
+              </div>
+
+              <div
+                className={`text-sm ${
+                  secondsLeft <= 10 ? "text-red-300" : "text-white/70"
+                }`}
+              >
+                Time left: <span className="text-white">{mm}:{ss}</span>
+              </div>
             </div>
 
-            <h2 className="text-2xl font-semibold">Q{(session.question_index ?? 0) + 1}</h2>
+            <h2 className="text-2xl font-semibold">
+              Q{(session.question_index ?? 0) + 1}
+            </h2>
             <p className="text-white/70">{session.question}</p>
+
+            {/* ✅ Audio recorder */}
+            <AudioRecorder onRecorded={submitAudio} />
+            {uploadingAudio ? (
+              <p className="text-white/60 text-sm">Uploading audio...</p>
+            ) : null}
 
             <textarea
               value={answer}
@@ -269,12 +396,13 @@ export default function Interview() {
               rows={5}
               className="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30"
               placeholder="Type your answer here..."
+              disabled={loadingSubmit || uploadingAudio}
             />
 
             <div className="flex gap-3">
               <button
-                onClick={submit}
-                disabled={loadingSubmit}
+                onClick={() => submit()}
+                disabled={loadingSubmit || uploadingAudio}
                 className="bg-white text-black px-6 py-2 rounded-lg hover:scale-105 transition disabled:opacity-60 disabled:hover:scale-100"
               >
                 {loadingSubmit ? "Submitting..." : "Submit"}

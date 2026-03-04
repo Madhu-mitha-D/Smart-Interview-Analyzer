@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api/axios";
+import { PrimaryButton, GhostButton, DangerButton } from "../components/Buttons";
 
 export default function Register() {
   const nav = useNavigate();

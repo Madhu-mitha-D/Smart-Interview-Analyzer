@@ -27,6 +27,9 @@ export default function Insights() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // ✅ Raw JSON only when you toggle dev mode
+  const [devMode, setDevMode] = useState(false);
+
   const overallTone = useMemo(() => {
     const v = (data?.overall_performance || "").toLowerCase();
     if (v.includes("excellent") || v.includes("good")) return "good";
@@ -88,6 +91,21 @@ export default function Insights() {
               </Link>
             ) : null}
           </div>
+        </div>
+
+        {/* Dev mode toggle */}
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <span className="text-xs text-white/60">Developer mode</span>
+          <button
+            onClick={() => setDevMode((v) => !v)}
+            className={`text-xs px-3 py-1 rounded-full border transition ${
+              devMode
+                ? "bg-white text-black border-white"
+                : "bg-white/5 text-white border-white/15 hover:bg-white/10"
+            }`}
+          >
+            {devMode ? "ON" : "OFF"}
+          </button>
         </div>
 
         {msg && (
@@ -155,9 +173,12 @@ export default function Insights() {
                   </p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                  <p className="text-white/70 text-sm">Next step</p>
+                  <p className="text-white/70 text-sm">Try this next</p>
                   <p className="mt-1 text-white/90">
                     {data.next_step_suggestion || "—"}
+                  </p>
+                  <p className="mt-2 text-xs text-white/55">
+                    (STAR is just a simple way to answer: Situation → Task → Action → Result)
                   </p>
                 </div>
               </div>
@@ -182,7 +203,7 @@ export default function Insights() {
 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">Weakest Answer</h2>
+                  <h2 className="text-xl font-semibold">Needs Work</h2>
                   <Badge tone="bad">
                     Score: {data.weakest_answer?.score ?? 0}
                   </Badge>
@@ -198,15 +219,17 @@ export default function Insights() {
               </div>
             </div>
 
-            {/* Raw JSON */}
-            <details className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <summary className="cursor-pointer text-white/80">
-                See raw JSON
-              </summary>
-              <pre className="mt-3 text-xs bg-black/40 p-4 rounded-xl overflow-auto">
-                {JSON.stringify(data, null, 2)}
-              </pre>
-            </details>
+            {/* Raw JSON only in Dev mode */}
+            {devMode ? (
+              <details className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <summary className="cursor-pointer text-white/80">
+                  Developer: raw JSON
+                </summary>
+                <pre className="mt-3 text-xs bg-black/40 p-4 rounded-xl overflow-auto">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </details>
+            ) : null}
           </div>
         )}
       </motion.div>

@@ -76,7 +76,20 @@ def _anchor_for(domain: str, question_text: str, question_index: int) -> str:
     anchors = DOMAIN_ANCHORS.get(domain) or ["Answer clearly and support with an example."]
 
     if domain == "hr":
-        if any(x in q for x in ["time you", "handled", "conflict", "failure", "learned", "pressure", "led", "ambiguity", "unclear"]):
+        if any(
+            x in q
+            for x in [
+                "time you",
+                "handled",
+                "conflict",
+                "failure",
+                "learned",
+                "pressure",
+                "led",
+                "ambiguity",
+                "unclear",
+            ]
+        ):
             return "Use STAR: Situation, Task, Action, Result. Include what you did and the outcome."
         if "tell me about yourself" in q:
             return "Structure: who you are now, key skills, 1 project proof, what role you want."
@@ -137,7 +150,7 @@ def _quality_addons(answer: str, quality: Dict) -> list[str]:
         addons.append("Reduce filler words; pause instead of filling silence.")
 
     if structure in {"UNSTRUCTURED", "RAMBLING"}:
-        addons.append("Use structure: main point → example → takeaway.")
+        addons.append("Use structure: point → example → takeaway.")
 
     star_count = sum(1 for v in star_flags.values() if v)
     if star_count == 0 and length >= 80:
@@ -161,13 +174,26 @@ def score_answer(answer: str, question_index: int, question_text: str = "", doma
     if domain:
         parts.append(f"Focus: {_anchor_for(domain, question_text, question_index)}")
 
-    feedback = " ".join(p for p in parts if p)
+    raw_feedback = " ".join(p for p in parts if p)
 
-    # Optional LLM upgrade (only when weak to reduce robotic repetition)
-    if sim < 0.35:
+    # Always humanize the fallback feedback (no OpenAI required)
+    try:
+        from backend.services.llm_feedback_service import humanize_feedback
+        feedback = humanize_feedback(
+            domain=domain or "hr",
+            question=question_text or "Interview question",
+            score_0_to_10=sem_score,
+            similarity_0_to_1=sim,
+            raw_feedback=raw_feedback,
+        )
+    except Exception:
+        feedback = raw_feedback
+
+    # Optional LLM upgrade for weak/off-topic answers only
+    should_use_llm = (sem_score <= 4) or (sim < 0.25)
+    if should_use_llm:
         try:
             from backend.services.llm_feedback_service import generate_llm_feedback
-
             llm_fb = generate_llm_feedback(
                 question=question_text or "Interview question",
                 answer=answer,

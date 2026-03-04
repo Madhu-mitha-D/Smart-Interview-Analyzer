@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import { PrimaryButton } from "../components/Buttons";
 
 export default function Login() {
   const nav = useNavigate();
@@ -10,79 +11,109 @@ export default function Login() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already logged in
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) nav("/", { replace: true });
-  }, [nav]);
+  // Convert FastAPI errors to readable text
+  const errToText = (e) => {
+    const data = e?.response?.data;
 
-  const handleLogin = async (e) => {
+    if (Array.isArray(data?.detail)) {
+      return data.detail.map((d) => d.msg).join(" | ");
+    }
+
+    if (typeof data?.detail === "string") {
+      return data.detail;
+    }
+
+    return "Login failed";
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
     setMsg("");
-
-    if (!email || !password) {
-      setMsg("Please enter email and password.");
-      return;
-    }
 
     try {
       setLoading(true);
 
+      // FastAPI OAuth2 expects form-data
       const form = new URLSearchParams();
       form.append("username", email);
       form.append("password", password);
 
       const res = await api.post("/auth/login", form, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       });
 
       localStorage.setItem("token", res.data.access_token);
 
       nav("/", { replace: true });
-    } catch (err) {
-      setMsg("Invalid credentials");
+    } catch (e) {
+      setMsg(errToText(e));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "black", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: "350px" }}>
-        <h2 style={{ marginBottom: "20px" }}>Login</h2>
+    <div className="min-h-screen flex items-center justify-center px-6 text-white">
+      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-8">
 
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <input
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ padding: "10px" }}
-          />
+        <h1 className="text-3xl font-semibold mb-6 text-center">
+          Login
+        </h1>
 
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ padding: "10px" }}
-          />
+        {msg && (
+          <div className="mb-4 text-red-300 text-sm">
+            {msg}
+          </div>
+        )}
 
-          <button type="submit" disabled={loading} style={{ padding: "10px", cursor: "pointer" }}>
+        <form onSubmit={submit} className="space-y-4">
+
+          <div>
+            <label className="text-sm text-white/70">
+              Email
+            </label>
+
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-4 py-2 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/20"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-white/70">
+              Password
+            </label>
+
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-4 py-2 focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/20"
+            />
+          </div>
+
+          <PrimaryButton
+            disabled={loading}
+            className="w-full py-2"
+          >
             {loading ? "Logging in..." : "Login"}
-          </button>
+          </PrimaryButton>
+
         </form>
 
-        {/* 👇 REGISTER LINK (VERY CLEAR) */}
-        <div style={{ marginTop: "20px" }}>
-          <p>
-            Don’t have an account?{" "}
-            <Link to="/register" style={{ color: "cyan", fontWeight: "bold" }}>
-              Register Here
-            </Link>
-          </p>
-        </div>
+        <p className="mt-6 text-center text-sm text-white/60">
+          Don’t have an account?{" "}
+          <Link to="/register" className="text-white hover:underline">
+            Create one
+          </Link>
+        </p>
 
-        {msg && <p style={{ marginTop: "15px", color: "red" }}>{msg}</p>}
       </div>
     </div>
   );

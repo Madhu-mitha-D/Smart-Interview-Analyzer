@@ -8,6 +8,7 @@ from backend.database.deps import get_db
 from backend.routes.auth_routes import get_current_user
 from backend.models.user_model import User
 from backend.models.interview_model import Interview
+from backend.services.interview_service import delete_interview_session
 
 from backend.services.interview_service import (
     create_interview,
