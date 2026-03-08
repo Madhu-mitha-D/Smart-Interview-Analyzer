@@ -1,7 +1,14 @@
-flask
-flask-cors
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic
+python-multipart
+transformers
+torch
+nltk
 numpy
 scikit-learn
-librosa
 SpeechRecognition
 pydub
+librosa

@@ -1,7 +1,11 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = "postgresql://postgres:2005@localhost:5432/smart_interview_db"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:2005@localhost:5432/smart_interview_db")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set")
 
 engine = create_engine(DATABASE_URL)
 
