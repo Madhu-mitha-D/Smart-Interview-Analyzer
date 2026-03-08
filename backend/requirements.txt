@@ -6,6 +6,9 @@ pydantic
 python-multipart
 transformers
 torch
+sentence-transformers
+openai
+openai-whisper
 nltk
 numpy
 scikit-learn
