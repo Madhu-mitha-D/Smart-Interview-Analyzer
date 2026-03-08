@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api/axios";
 import AudioRecorder from "../components/AudioRecorder";
-import { PrimaryButton, GhostButton, DangerButton } from "../components/Buttons";
+import VideoRecorder from "../components/VideoRecorder";
+import { PrimaryButton, GhostButton } from "../components/Buttons";
 
 const SECONDS_PER_QUESTION = 90;
 
@@ -19,12 +20,18 @@ export default function Interview() {
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [loadingResume, setLoadingResume] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [finalReport, setFinalReport] = useState(null);
 
-  // Choose domain/difficulty (used only when starting new)
+  // Start interview options
   const [domain, setDomain] = useState("hr");
   const [difficulty, setDifficulty] = useState("easy");
+
+  // Video interview options
+  const [enableVideo, setEnableVideo] = useState(false);
+  const [videoBlob, setVideoBlob] = useState(null);
+  const [videoMsg, setVideoMsg] = useState("");
 
   // Timer
   const [secondsLeft, setSecondsLeft] = useState(SECONDS_PER_QUESTION);
@@ -42,6 +49,8 @@ export default function Interview() {
     setSecondsLeft(SECONDS_PER_QUESTION);
     setTimeUp(false);
     autoSubmittedRef.current = false;
+    setVideoBlob(null);
+    setVideoMsg("");
   }, [session?.session_id, session?.question_index, finalReport]);
 
   // Countdown tick
@@ -62,12 +71,14 @@ export default function Interview() {
     setFinalReport(null);
     setSession(null);
     setAnswer("");
+    setVideoBlob(null);
+    setVideoMsg("");
     setLoadingStart(true);
 
     try {
       const res = await api.post("/start-interview", { domain, difficulty });
       setSession(res.data);
-      setSp({}); // clear resume query
+      setSp({});
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) return forceLogout();
@@ -85,7 +96,6 @@ export default function Interview() {
         ? forcedAnswer.trim()
         : (answer || "").trim();
 
-    // If manual submit and empty -> block
     if (forcedAnswer === undefined && !payloadAnswer) {
       setMsg("⚠️ Type an answer before submitting.");
       return;
@@ -101,6 +111,8 @@ export default function Interview() {
       });
 
       setAnswer("");
+      setVideoBlob(null);
+      setVideoMsg("");
 
       if (res.data.finished) {
         setFinalReport(res.data);
@@ -110,7 +122,6 @@ export default function Interview() {
           ...prev,
           question_index: res.data.next_question_index,
           question: res.data.next_question,
-          // keep if backend changes difficulty adaptively
           difficulty: res.data.current_difficulty || prev.difficulty,
         }));
 
@@ -129,7 +140,7 @@ export default function Interview() {
     }
   };
 
-  // Auto-submit ONCE when time is up
+  // Auto-submit once when time is up
   useEffect(() => {
     if (!timeUp || !session || finalReport) return;
     if (autoSubmittedRef.current) return;
@@ -139,7 +150,6 @@ export default function Interview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeUp]);
 
-  // Audio upload
   const submitAudio = async (blob) => {
     if (!session?.session_id) {
       setMsg("Start/resume an interview before sending audio.");
@@ -158,7 +168,9 @@ export default function Interview() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Same flow as text submit
+      setVideoBlob(null);
+      setVideoMsg("");
+
       if (res.data.finished) {
         setFinalReport(res.data);
         setMsg("🎉 Interview Finished!");
@@ -185,6 +197,53 @@ export default function Interview() {
     }
   };
 
+  const submitVideo = async (blob) => {
+    if (!session?.session_id) {
+      setMsg("Start/resume an interview before sending video.");
+      return;
+    }
+
+    setUploadingVideo(true);
+    setMsg("");
+
+    try {
+      const form = new FormData();
+      form.append("session_id", session.session_id);
+      form.append("file", blob, "answer.webm");
+
+      const res = await api.post("/video/submit-answer", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setVideoBlob(null);
+      setVideoMsg("");
+
+      if (res.data.finished) {
+        setFinalReport(res.data);
+        setMsg("🎉 Interview Finished!");
+      } else {
+        setSession((prev) => ({
+          ...prev,
+          question_index: res.data.next_question_index,
+          question: res.data.next_question,
+          difficulty: res.data.current_difficulty || prev.difficulty,
+        }));
+
+        setMsg(
+          `Video scored ✅ Score: ${res.data.score} | Similarity: ${Number(
+            res.data.similarity
+          ).toFixed(2)}`
+        );
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Video submit failed");
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
   // Resume if session_id present
   useEffect(() => {
     if (!resumeSessionId) return;
@@ -194,6 +253,8 @@ export default function Interview() {
       setMsg("");
       setFinalReport(null);
       setAnswer("");
+      setVideoBlob(null);
+      setVideoMsg("");
 
       try {
         const res = await api.get(
@@ -231,7 +292,7 @@ export default function Interview() {
         const status = err?.response?.status;
         if (status === 401) return forceLogout();
         setMsg(err?.response?.data?.detail || "Failed to resume interview");
-        setSp({}); // remove broken query
+        setSp({});
       } finally {
         setLoadingResume(false);
       }
@@ -240,7 +301,6 @@ export default function Interview() {
   }, [resumeSessionId]);
 
   const sid = session?.session_id || resumeSessionId;
-
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
@@ -250,7 +310,7 @@ export default function Interview() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="max-w-2xl w-full"
+        className="max-w-3xl w-full"
       >
         {loadingResume ? (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
@@ -284,13 +344,26 @@ export default function Interview() {
                 <option value="hard">Hard</option>
               </select>
 
-              <button
+              <div className="mt-2 flex items-center gap-3">
+                <input
+                  id="videoMode"
+                  type="checkbox"
+                  checked={enableVideo}
+                  onChange={(e) => setEnableVideo(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="videoMode" className="text-sm text-white/70">
+                  Enable video interview preview
+                </label>
+              </div>
+
+              <PrimaryButton
                 onClick={start}
                 disabled={loadingStart}
-                className="mt-4 bg-white text-black px-6 py-3 rounded-xl hover:scale-[1.02] transition disabled:opacity-60 disabled:hover:scale-100"
+                className="mt-4 px-6 py-3"
               >
                 {loadingStart ? "Starting..." : "Start"}
-              </button>
+              </PrimaryButton>
             </div>
 
             {msg && <p className="text-red-400 font-medium">{msg}</p>}
@@ -342,12 +415,9 @@ export default function Interview() {
                 </>
               ) : null}
 
-              <button
-                onClick={start}
-                className="border border-white/20 px-5 py-2 rounded-lg hover:bg-white/10 transition"
-              >
+              <GhostButton onClick={start} className="px-5 py-2 rounded-lg">
                 Start New Interview
-              </button>
+              </GhostButton>
             </div>
 
             {finalReport?.detailed_report ? (
@@ -384,7 +454,45 @@ export default function Interview() {
             </h2>
             <p className="text-white/70">{session.question}</p>
 
-            {/* ✅ Audio recorder */}
+            <div className="flex items-center gap-3">
+              <input
+                id="videoActive"
+                type="checkbox"
+                checked={enableVideo}
+                onChange={(e) => setEnableVideo(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <label htmlFor="videoActive" className="text-sm text-white/70">
+                Use video interview mode
+              </label>
+            </div>
+
+            {enableVideo ? (
+              <VideoRecorder
+                onRecordingComplete={(blob) => {
+                  setVideoBlob(blob);
+                  setVideoMsg("Video recorded successfully. You can now submit it.");
+                }}
+                onError={(errMsg) => {
+                  setVideoMsg(errMsg);
+                }}
+              />
+            ) : null}
+
+            {videoMsg ? (
+              <p className="text-sm text-white/60">{videoMsg}</p>
+            ) : null}
+
+            {videoBlob ? (
+              <PrimaryButton
+                onClick={() => submitVideo(videoBlob)}
+                disabled={uploadingVideo || loadingSubmit || uploadingAudio}
+                className="px-6 py-2 rounded-lg"
+              >
+                {uploadingVideo ? "Uploading Video..." : "Submit Recorded Video"}
+              </PrimaryButton>
+            ) : null}
+
             <AudioRecorder onRecorded={submitAudio} />
             {uploadingAudio ? (
               <p className="text-white/60 text-sm">Uploading audio...</p>
@@ -396,24 +504,24 @@ export default function Interview() {
               rows={5}
               className="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/30"
               placeholder="Type your answer here..."
-              disabled={loadingSubmit || uploadingAudio}
+              disabled={loadingSubmit || uploadingAudio || uploadingVideo}
             />
 
             <div className="flex gap-3">
-              <button
+              <PrimaryButton
                 onClick={() => submit()}
-                disabled={loadingSubmit || uploadingAudio}
-                className="bg-white text-black px-6 py-2 rounded-lg hover:scale-105 transition disabled:opacity-60 disabled:hover:scale-100"
+                disabled={loadingSubmit || uploadingAudio || uploadingVideo}
+                className="px-6 py-2 rounded-lg"
               >
                 {loadingSubmit ? "Submitting..." : "Submit"}
-              </button>
+              </PrimaryButton>
 
-              <button
+              <GhostButton
                 onClick={() => nav("/")}
-                className="border border-white/20 px-6 py-2 rounded-lg hover:bg-white/10 transition"
+                className="px-6 py-2 rounded-lg"
               >
                 Back
-              </button>
+              </GhostButton>
             </div>
 
             {msg && <p className="text-green-400 font-medium">{msg}</p>}
