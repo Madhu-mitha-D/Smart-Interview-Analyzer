@@ -1,4 +1,3 @@
-# backend/services/scoring_service.py
 from __future__ import annotations
 
 import random
@@ -8,8 +7,16 @@ from typing import Dict, Tuple
 from sentence_transformers import SentenceTransformer, util
 from backend.services.quality_service import analyze_answer_quality
 
-# Load once (cached after first download)
-_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+# Lazy-load once on first use (important for Render startup)
+_st_model = None
+
+
+def get_st_model() -> SentenceTransformer:
+    global _st_model
+    if _st_model is None:
+        _st_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    return _st_model
+
 
 DOMAIN_ANCHORS = {
     "hr": [
@@ -117,8 +124,9 @@ def semantic_score(
 
     ideal = _anchor_for(domain, question_text, question_index)
 
-    emb_user = _model.encode(answer, convert_to_tensor=True, normalize_embeddings=True)
-    emb_ideal = _model.encode(ideal, convert_to_tensor=True, normalize_embeddings=True)
+    model = get_st_model()
+    emb_user = model.encode(answer, convert_to_tensor=True, normalize_embeddings=True)
+    emb_ideal = model.encode(ideal, convert_to_tensor=True, normalize_embeddings=True)
 
     sim = float(util.cos_sim(emb_user, emb_ideal).item())
     score = int(round(sim * 10))
@@ -179,6 +187,7 @@ def score_answer(answer: str, question_index: int, question_text: str = "", doma
     # Always humanize the fallback feedback (no OpenAI required)
     try:
         from backend.services.llm_feedback_service import humanize_feedback
+
         feedback = humanize_feedback(
             domain=domain or "hr",
             question=question_text or "Interview question",
@@ -194,6 +203,7 @@ def score_answer(answer: str, question_index: int, question_text: str = "", doma
     if should_use_llm:
         try:
             from backend.services.llm_feedback_service import generate_llm_feedback
+
             llm_fb = generate_llm_feedback(
                 question=question_text or "Interview question",
                 answer=answer,
