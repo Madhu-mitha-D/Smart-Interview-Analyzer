@@ -15,3 +15,5 @@ scikit-learn
 SpeechRecognition
 pydub
 librosa
+python-jose[cryptography]
+passlib[bcrypt]
