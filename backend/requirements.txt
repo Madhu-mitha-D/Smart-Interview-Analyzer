@@ -5,6 +5,7 @@ psycopg2-binary
 pydantic
 email-validator
 python-multipart
+sentence-transformers
 python-jose[cryptography]
 passlib[bcrypt]
 numpy
