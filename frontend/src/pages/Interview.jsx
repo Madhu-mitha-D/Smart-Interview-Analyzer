@@ -4,9 +4,11 @@ import { motion } from "framer-motion";
 import api from "../api/axios";
 import AudioRecorder from "../components/AudioRecorder";
 import VideoRecorder from "../components/VideoRecorder";
+import ResumeInterview from "../components/ResumeInterview";
+import CodingInterview from "../components/CodingInterview";
 import { PrimaryButton, GhostButton } from "../components/Buttons";
 
-const SECONDS_PER_QUESTION = 90;
+const SECONDS_PER_QUESTION = 240;
 
 export default function Interview() {
   const nav = useNavigate();
@@ -24,18 +26,18 @@ export default function Interview() {
 
   const [finalReport, setFinalReport] = useState(null);
 
-  // Start interview options
   const [domain, setDomain] = useState("hr");
   const [difficulty, setDifficulty] = useState("easy");
+  const [interviewMode, setInterviewMode] = useState("domain");
 
-  // Video interview options
   const [enableVideo, setEnableVideo] = useState(false);
   const [videoBlob, setVideoBlob] = useState(null);
   const [videoMsg, setVideoMsg] = useState("");
 
-  // Timer
   const [secondsLeft, setSecondsLeft] = useState(SECONDS_PER_QUESTION);
   const [timeUp, setTimeUp] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const autoSubmittedRef = useRef(false);
 
   const forceLogout = () => {
@@ -43,19 +45,33 @@ export default function Interview() {
     nav("/login", { replace: true });
   };
 
-  // Reset timer whenever question changes / new session starts
+  const saveAndExit = () => {
+    setIsPaused(true);
+    setShowExitModal(true);
+  };
+
+  const confirmExit = () => {
+    setShowExitModal(false);
+    nav("/");
+  };
+
+  const cancelExit = () => {
+    setShowExitModal(false);
+  };
+
   useEffect(() => {
     if (!session || finalReport) return;
     setSecondsLeft(SECONDS_PER_QUESTION);
     setTimeUp(false);
+    setIsPaused(false);
+    setShowExitModal(false);
     autoSubmittedRef.current = false;
     setVideoBlob(null);
     setVideoMsg("");
   }, [session?.session_id, session?.question_index, finalReport]);
 
-  // Countdown tick
   useEffect(() => {
-    if (!session || finalReport) return;
+    if (!session || finalReport || isPaused) return;
 
     if (secondsLeft <= 0) {
       setTimeUp(true);
@@ -64,7 +80,7 @@ export default function Interview() {
 
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearTimeout(t);
-  }, [secondsLeft, session, finalReport]);
+  }, [secondsLeft, session, finalReport, isPaused]);
 
   const start = async () => {
     setMsg("");
@@ -77,7 +93,10 @@ export default function Interview() {
 
     try {
       const res = await api.post("/start-interview", { domain, difficulty });
-      setSession(res.data);
+      setSession({
+        ...res.data,
+        is_follow_up: false,
+      });
       setSp({});
     } catch (err) {
       const status = err?.response?.status;
@@ -123,13 +142,18 @@ export default function Interview() {
           question_index: res.data.next_question_index,
           question: res.data.next_question,
           difficulty: res.data.current_difficulty || prev.difficulty,
+          is_follow_up: !!res.data.is_follow_up,
         }));
 
-        setMsg(
-          `Score: ${res.data.score} | Similarity: ${Number(
-            res.data.similarity
-          ).toFixed(2)}`
-        );
+        if (res.data.is_follow_up) {
+          setMsg("Follow-up question generated.");
+        } else {
+          setMsg(
+            `Score: ${res.data.score} | Similarity: ${Number(
+              res.data.similarity
+            ).toFixed(2)}`
+          );
+        }
       }
     } catch (err) {
       const status = err?.response?.status;
@@ -140,7 +164,6 @@ export default function Interview() {
     }
   };
 
-  // Auto-submit once when time is up
   useEffect(() => {
     if (!timeUp || !session || finalReport) return;
     if (autoSubmittedRef.current) return;
@@ -180,13 +203,18 @@ export default function Interview() {
           question_index: res.data.next_question_index,
           question: res.data.next_question,
           difficulty: res.data.current_difficulty || prev.difficulty,
+          is_follow_up: !!res.data.is_follow_up,
         }));
 
-        setMsg(
-          `Audio scored ✅ Score: ${res.data.score} | Similarity: ${Number(
-            res.data.similarity
-          ).toFixed(2)}`
-        );
+        if (res.data.is_follow_up) {
+          setMsg("Follow-up question generated.");
+        } else {
+          setMsg(
+            `Audio scored ✅ Score: ${res.data.score} | Similarity: ${Number(
+              res.data.similarity
+            ).toFixed(2)}`
+          );
+        }
       }
     } catch (err) {
       const status = err?.response?.status;
@@ -227,13 +255,18 @@ export default function Interview() {
           question_index: res.data.next_question_index,
           question: res.data.next_question,
           difficulty: res.data.current_difficulty || prev.difficulty,
+          is_follow_up: !!res.data.is_follow_up,
         }));
 
-        setMsg(
-          `Video scored ✅ Score: ${res.data.score} | Similarity: ${Number(
-            res.data.similarity
-          ).toFixed(2)}`
-        );
+        if (res.data.is_follow_up) {
+          setMsg("Follow-up question generated.");
+        } else {
+          setMsg(
+            `Video scored ✅ Score: ${res.data.score} | Similarity: ${Number(
+              res.data.similarity
+            ).toFixed(2)}`
+          );
+        }
       }
     } catch (err) {
       const status = err?.response?.status;
@@ -244,7 +277,6 @@ export default function Interview() {
     }
   };
 
-  // Resume if session_id present
   useEffect(() => {
     if (!resumeSessionId) return;
 
@@ -278,6 +310,7 @@ export default function Interview() {
             question_index:
               data.current_question ?? data.current_question_index ?? 0,
             question: "",
+            is_follow_up: false,
           });
         } else {
           setSession({
@@ -286,6 +319,7 @@ export default function Interview() {
             difficulty: data.difficulty,
             question_index: data.question_index,
             question: data.question,
+            is_follow_up: !!data.is_follow_up,
           });
         }
       } catch (err) {
@@ -320,51 +354,108 @@ export default function Interview() {
           <div className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6">
             <h2 className="text-2xl font-semibold">Start Interview</h2>
 
-            <div className="grid gap-3">
-              <label className="text-sm text-white/70">Domain</label>
-              <select
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-xl p-3"
+            <div className="flex gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setInterviewMode("domain")}
+                className={`px-4 py-2 rounded-xl border transition ${
+                  interviewMode === "domain"
+                    ? "bg-white text-black border-white"
+                    : "bg-transparent text-white border-white/20 hover:bg-white/10"
+                }`}
               >
-                <option value="hr">HR</option>
-                <option value="java">Java</option>
-                <option value="dbms">DBMS</option>
-                <option value="ai">AI</option>
-              </select>
+                Domain Interview
+              </button>
 
-              <label className="text-sm text-white/70 mt-2">Difficulty</label>
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-xl p-3"
+              <button
+                type="button"
+                onClick={() => setInterviewMode("resume")}
+                className={`px-4 py-2 rounded-xl border transition ${
+                  interviewMode === "resume"
+                    ? "bg-white text-black border-white"
+                    : "bg-transparent text-white border-white/20 hover:bg-white/10"
+                }`}
               >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+                Resume-Based Interview
+              </button>
 
-              <div className="mt-2 flex items-center gap-3">
-                <input
-                  id="videoMode"
-                  type="checkbox"
-                  checked={enableVideo}
-                  onChange={(e) => setEnableVideo(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="videoMode" className="text-sm text-white/70">
-                  Enable video interview preview
-                </label>
-              </div>
-
-              <PrimaryButton
-                onClick={start}
-                disabled={loadingStart}
-                className="mt-4 px-6 py-3"
+              <button
+                type="button"
+                onClick={() => setInterviewMode("coding")}
+                className={`px-4 py-2 rounded-xl border transition ${
+                  interviewMode === "coding"
+                    ? "bg-white text-black border-white"
+                    : "bg-transparent text-white border-white/20 hover:bg-white/10"
+                }`}
               >
-                {loadingStart ? "Starting..." : "Start"}
-              </PrimaryButton>
+                Coding Interview
+              </button>
             </div>
+
+            {interviewMode === "domain" ? (
+              <div className="grid gap-3">
+                <label className="text-sm text-white/70">Domain</label>
+                <select
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  className="bg-black/30 border border-white/10 rounded-xl p-3"
+                >
+                  <option value="hr">HR</option>
+                  <option value="java">Java</option>
+                  <option value="dbms">DBMS</option>
+                  <option value="ai">AI</option>
+                </select>
+
+                <label className="text-sm text-white/70 mt-2">Difficulty</label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="bg-black/30 border border-white/10 rounded-xl p-3"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+
+                <div className="mt-2 flex items-center gap-3">
+                  <input
+                    id="videoMode"
+                    type="checkbox"
+                    checked={enableVideo}
+                    onChange={(e) => setEnableVideo(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="videoMode" className="text-sm text-white/70">
+                    Enable video interview preview
+                  </label>
+                </div>
+
+                <PrimaryButton
+                  onClick={start}
+                  disabled={loadingStart}
+                  className="mt-4 px-6 py-3"
+                >
+                  {loadingStart ? "Starting..." : "Start"}
+                </PrimaryButton>
+              </div>
+            ) : interviewMode === "resume" ? (
+              <ResumeInterview
+                onStart={(resumeSession) => {
+                  setMsg("");
+                  setFinalReport(null);
+                  setAnswer("");
+                  setVideoBlob(null);
+                  setVideoMsg("");
+                  setSession({
+                    ...resumeSession,
+                    is_follow_up: false,
+                  });
+                  setSp({});
+                }}
+              />
+            ) : (
+              <CodingInterview />
+            )}
 
             {msg && <p className="text-red-400 font-medium">{msg}</p>}
           </div>
@@ -435,23 +526,55 @@ export default function Interview() {
           </div>
         ) : (
           <div className="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="text-white/70 text-sm">
                 Session: <span className="text-white">{session.session_id}</span>
               </div>
 
-              <div
-                className={`text-sm ${
-                  secondsLeft <= 10 ? "text-red-300" : "text-white/70"
-                }`}
-              >
-                Time left: <span className="text-white">{mm}:{ss}</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div
+                  className={`text-sm ${
+                    secondsLeft <= 10 && !isPaused
+                      ? "text-red-300"
+                      : "text-white/70"
+                  }`}
+                >
+                  Time left: <span className="text-white font-medium">{mm}:{ss}</span>
+                  {isPaused ? <span className="ml-2 text-yellow-300">Paused</span> : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPaused((prev) => !prev)}
+                  className="h-8 w-8 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 transition flex items-center justify-center text-sm"
+                  title={isPaused ? "Resume timer" : "Pause timer"}
+                >
+                  {isPaused ? "▶" : "⏸"}
+                </button>
+
+                <GhostButton
+                  type="button"
+                  onClick={saveAndExit}
+                  className="px-4 py-1.5 rounded-lg"
+                >
+                  Save & Exit
+                </GhostButton>
               </div>
             </div>
 
-            <h2 className="text-2xl font-semibold">
-              Q{(session.question_index ?? 0) + 1}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-semibold">
+                {session.is_follow_up
+                  ? `Q${(session.question_index ?? 0) + 1}.1`
+                  : `Q${(session.question_index ?? 0) + 1}`}
+              </h2>
+              {session.is_follow_up ? (
+                <span className="rounded-full border border-blue-400/30 bg-blue-400/10 px-3 py-1 text-xs text-blue-300">
+                  Follow-up
+                </span>
+              ) : null}
+            </div>
+
             <p className="text-white/70">{session.question}</p>
 
             <div className="flex items-center gap-3">
@@ -527,6 +650,30 @@ export default function Interview() {
             {msg && <p className="text-green-400 font-medium">{msg}</p>}
           </div>
         )}
+
+        {showExitModal ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
+            <div
+              className="absolute inset-0 bg-black/70"
+              onClick={cancelExit}
+            />
+            <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-6">
+              <h3 className="text-xl font-semibold">Save and exit interview?</h3>
+              <p className="mt-2 text-sm text-white/70">
+                Your current interview progress is saved. You can continue later from the dashboard.
+              </p>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <GhostButton type="button" onClick={cancelExit}>
+                  Stay Here
+                </GhostButton>
+                <PrimaryButton type="button" onClick={confirmExit}>
+                  Go to Dashboard
+                </PrimaryButton>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </motion.div>
     </div>
   );

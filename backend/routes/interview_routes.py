@@ -8,7 +8,6 @@ from backend.database.deps import get_db
 from backend.routes.auth_routes import get_current_user
 from backend.models.user_model import User
 from backend.models.interview_model import Interview
-from backend.services.interview_service import delete_interview_session
 
 from backend.services.interview_service import (
     create_interview,
@@ -16,6 +15,9 @@ from backend.services.interview_service import (
     get_interview_state,
     delete_interview_session,
 )
+
+from backend.services.coding_question_service import get_coding_question
+from backend.services.code_runner_service import run_python_code_submission
 
 router = APIRouter(tags=["Interview"])
 
@@ -57,6 +59,50 @@ def submit_answer(
         raise HTTPException(status_code=400, detail=msg)
 
 
+@router.post("/start-coding-interview")
+def start_coding_interview(
+    difficulty: str = Body(default="easy", embed=True),
+    user: User = Depends(get_current_user),
+):
+    try:
+        question = get_coding_question(difficulty)
+        return {
+            "domain": "coding",
+            "difficulty": difficulty,
+            "finished": False,
+            "question": question,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/submit-code")
+def submit_code(
+    code: str = Body(..., embed=True),
+    function_name: str = Body(..., embed=True),
+    test_cases: list = Body(..., embed=True),
+    user: User = Depends(get_current_user),
+):
+    try:
+        result = run_python_code_submission(code, function_name, test_cases)
+
+        score = 0
+        if result["total_count"] > 0:
+            score = round((result["passed_count"] / result["total_count"]) * 10, 2)
+
+        return {
+            "finished": True,
+            "score": score,
+            "passed": result["passed"],
+            "passed_count": result["passed_count"],
+            "total_count": result["total_count"],
+            "results": result["results"],
+            "error": result.get("error"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Code submission failed: {str(e)}")
+
+
 @router.get("/interviews/my")
 def my_interviews(
     db: Session = Depends(get_db),
@@ -83,7 +129,6 @@ def my_interviews(
     ]
 
 
-# ✅ RESUME STATE (GET) — avoids collision with DELETE
 @router.get("/interviews/{session_id}/state")
 def resume_interview(
     session_id: str,
@@ -99,7 +144,6 @@ def resume_interview(
         raise HTTPException(status_code=400, detail=msg)
 
 
-# ✅ DELETE SESSION
 @router.delete("/interviews/{session_id}")
 def delete_interview(
     session_id: str,

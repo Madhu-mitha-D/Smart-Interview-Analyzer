@@ -18,3 +18,5 @@ pydub
 librosa
 python-jose[cryptography]
 passlib[bcrypt]
+PyPDF2
+python-docx

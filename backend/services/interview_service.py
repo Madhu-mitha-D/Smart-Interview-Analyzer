@@ -1,5 +1,6 @@
 # backend/services/interview_service.py
 import uuid
+import json
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 
@@ -8,10 +9,14 @@ from backend.models.answer_model import Answer
 from backend.services.question_service import get_questions
 from backend.services.scoring_service import score_answer
 from backend.services.adaptive_service import adjust_difficulty
+from backend.services.followup_question_service import (
+    should_generate_followup,
+    generate_followup_question,
+)
 
 
 # =========================
-# CREATE INTERVIEW (WITH USER)
+# CREATE NORMAL INTERVIEW
 # =========================
 def create_interview(db: Session, user_id: int, domain: str, difficulty: str):
     questions = get_questions(domain, difficulty)
@@ -19,14 +24,50 @@ def create_interview(db: Session, user_id: int, domain: str, difficulty: str):
 
     interview = Interview(
         session_id=session_id,
-        user_id=user_id,  # ✅ important
+        user_id=user_id,
         domain=domain,
         difficulty=difficulty,
         current_question=0,
         total_question=len(questions),
         total_score=0,
         verdict=None,
-        is_completed=False
+        is_completed=False,
+        generated_questions=None,
+        awaiting_follow_up=False,
+        follow_up_question=None,
+        follow_up_for_index=None,
+    )
+
+    db.add(interview)
+    db.commit()
+    db.refresh(interview)
+
+    return interview, questions[0]
+
+
+# =========================
+# CREATE RESUME INTERVIEW
+# =========================
+def create_resume_interview(db: Session, user_id: int, questions: list[str]):
+    if not questions:
+        raise ValueError("No resume interview questions generated.")
+
+    session_id = str(uuid.uuid4())
+
+    interview = Interview(
+        session_id=session_id,
+        user_id=user_id,
+        domain="resume",
+        difficulty="personalized",
+        current_question=0,
+        total_question=len(questions),
+        total_score=0,
+        verdict=None,
+        is_completed=False,
+        generated_questions=json.dumps(questions),
+        awaiting_follow_up=False,
+        follow_up_question=None,
+        follow_up_for_index=None,
     )
 
     db.add(interview)
@@ -48,22 +89,35 @@ def submit_interview_answer(
     interview = db.execute(
         select(Interview).where(
             Interview.session_id == session_id,
-            Interview.user_id == user_id  # ✅ owner check
+            Interview.user_id == user_id
         )
     ).scalar_one_or_none()
 
     if not interview:
         raise ValueError("Session not found (or not owned by user)")
 
-    questions = get_questions(interview.domain, interview.difficulty)
+    questions = get_questions(
+        interview.domain,
+        interview.difficulty,
+        interview.generated_questions
+    )
 
-    if interview.current_question >= len(questions):
-        raise ValueError("Interview already completed")
+    # determine whether current prompt is a main question or follow-up
+    if interview.awaiting_follow_up and interview.follow_up_question:
+        q_text = interview.follow_up_question
+        idx = (
+            interview.follow_up_for_index
+            if interview.follow_up_for_index is not None
+            else interview.current_question
+        )
+        is_follow_up = True
+    else:
+        if interview.current_question >= len(questions):
+            raise ValueError("Interview already completed")
+        idx = interview.current_question
+        q_text = questions[idx]
+        is_follow_up = False
 
-    idx = interview.current_question
-    q_text = questions[idx]
-
-    # ✅ improved scoring call (with context)
     score, feedback, sim, quality = score_answer(
         answer,
         idx,
@@ -82,22 +136,68 @@ def submit_interview_answer(
     )
     db.add(ans)
 
-    interview.current_question += 1
+    if is_follow_up:
+        # follow-up answered, clear it and move to next main question
+        interview.awaiting_follow_up = False
+        interview.follow_up_question = None
+        interview.follow_up_for_index = None
+        interview.current_question += 1
+    else:
+        # maybe generate one follow-up question
+        should_follow = should_generate_followup(
+            domain=interview.domain,
+            question_text=q_text,
+            answer=answer,
+            score_0_to_10=score,
+            similarity_0_to_1=sim,
+            quality=quality,
+        )
 
-    # running average
+        if should_follow:
+            follow_q = generate_followup_question(
+                domain=interview.domain,
+                question_text=q_text,
+                answer=answer,
+            )
+
+            if follow_q:
+                interview.awaiting_follow_up = True
+                interview.follow_up_question = follow_q
+                interview.follow_up_for_index = idx
+
+                db.commit()
+
+                return {
+                    "finished": False,
+                    "message": "Answer recorded. Follow-up question generated.",
+                    "score": score,
+                    "similarity": sim,
+                    "feedback": feedback,
+                    "quality": quality,
+                    "avg_score_so_far": None,
+                    "current_difficulty": interview.difficulty,
+                    "next_question_index": idx,
+                    "next_question": follow_q,
+                    "is_follow_up": True,
+                }
+
+        interview.current_question += 1
+
+    # recompute average from all stored answers
     all_scores = db.execute(
         select(Answer.score).where(Answer.interview_id == interview.id)
     ).scalars().all()
 
-    all_scores = [s or 0 for s in all_scores] + [score]
-    avg_so_far = round(sum(all_scores) / len(all_scores), 2)
+    all_scores = [s or 0 for s in all_scores]
+    avg_so_far = round(sum(all_scores) / len(all_scores), 2) if all_scores else 0.0
 
-    # adaptive difficulty
-    interview.difficulty = adjust_difficulty(
-        interview.difficulty,
-        score,
-        avg_so_far
-    )
+    # adaptive difficulty only for normal non-resume interviews
+    if interview.domain != "resume":
+        interview.difficulty = adjust_difficulty(
+            interview.difficulty,
+            score,
+            avg_so_far
+        )
 
     # =========================
     # FINISH
@@ -110,7 +210,7 @@ def submit_interview_answer(
         ).scalars().all()
 
         total_score = sum(a.score or 0 for a in all_answers)
-        average_score = round(total_score / len(questions), 2)
+        average_score = round(total_score / len(all_answers), 2) if all_answers else 0.0
 
         if average_score >= 8:
             verdict = "Excellent performance"
@@ -147,7 +247,11 @@ def submit_interview_answer(
     # =========================
     # CONTINUE
     # =========================
-    next_questions = get_questions(interview.domain, interview.difficulty)
+    next_questions = get_questions(
+        interview.domain,
+        interview.difficulty,
+        interview.generated_questions
+    )
     next_q = next_questions[interview.current_question]
 
     db.commit()
@@ -162,7 +266,8 @@ def submit_interview_answer(
         "avg_score_so_far": avg_so_far,
         "current_difficulty": interview.difficulty,
         "next_question_index": interview.current_question,
-        "next_question": next_q
+        "next_question": next_q,
+        "is_follow_up": False,
     }
 
 
@@ -192,7 +297,7 @@ def list_user_interviews(db: Session, user_id: int):
 
 
 # =========================
-# RESUME INTERVIEW
+# GET INTERVIEW STATE
 # =========================
 def get_interview_state(db: Session, user_id: int, session_id: str):
     interview = db.execute(
@@ -205,7 +310,11 @@ def get_interview_state(db: Session, user_id: int, session_id: str):
     if not interview:
         raise ValueError("Session not found (or not owned by user)")
 
-    questions = get_questions(interview.domain, interview.difficulty)
+    questions = get_questions(
+        interview.domain,
+        interview.difficulty,
+        interview.generated_questions
+    )
 
     if interview.is_completed or interview.current_question >= len(questions):
         return {
@@ -219,24 +328,32 @@ def get_interview_state(db: Session, user_id: int, session_id: str):
             "verdict": interview.verdict,
         }
 
-    idx = interview.current_question
-    q = questions[idx]
+    if interview.awaiting_follow_up and interview.follow_up_question:
+        q = interview.follow_up_question
+        idx = (
+            interview.follow_up_for_index
+            if interview.follow_up_for_index is not None
+            else interview.current_question
+        )
+        is_follow_up = True
+    else:
+        idx = interview.current_question
+        q = questions[idx]
+        is_follow_up = False
 
-    # ✅ return BOTH styles (safe for frontend)
     return {
         "finished": False,
         "session_id": interview.session_id,
         "domain": interview.domain,
         "difficulty": interview.difficulty,
-
-        "question_index": idx,     # your old key
-        "question": q,             # your old key
-
-        "current_question": idx,   # extra (some UIs prefer this)
-        "next_question": q,        # extra (some UIs prefer this)
-
+        "question_index": idx,
+        "question": q,
+        "current_question": idx,
+        "next_question": q,
         "total_question": interview.total_question,
+        "is_follow_up": is_follow_up,
     }
+
 
 # =========================
 # DELETE INTERVIEW

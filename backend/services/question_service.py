@@ -1,4 +1,4 @@
-# backend/services/question_service.py
+import json
 
 QUESTION_BANK = {
     "hr": {
@@ -72,7 +72,15 @@ QUESTION_BANK = {
 }
 
 
-def get_questions(domain: str, difficulty: str):
+def get_questions(domain: str, difficulty: str, generated_questions: str = None):
+    if generated_questions:
+        try:
+            questions = json.loads(generated_questions)
+            if isinstance(questions, list) and questions:
+                return questions
+        except Exception:
+            pass
+
     domain = (domain or "hr").lower().strip()
     difficulty = (difficulty or "easy").lower().strip()
 
