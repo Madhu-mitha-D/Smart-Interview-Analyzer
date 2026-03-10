@@ -10,6 +10,57 @@ import { PrimaryButton, GhostButton } from "../components/Buttons";
 
 const SECONDS_PER_QUESTION = 240;
 
+function CommunicationCard({ communication }) {
+  if (!communication) return null;
+
+  return (
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+      <h3 className="text-lg font-semibold text-white">Communication Analysis</h3>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+          <p className="text-xs text-white/60">Speaking Pace</p>
+          <p className="mt-1 text-base font-semibold text-white">
+            {communication.pace_label || "—"}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+          <p className="text-xs text-white/60">Words / Min</p>
+          <p className="mt-1 text-base font-semibold text-white">
+            {Number(communication.words_per_minute ?? 0).toFixed(2)}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+          <p className="text-xs text-white/60">Filler Words</p>
+          <p className="mt-1 text-base font-semibold text-white">
+            {communication.filler_count ?? 0}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+          <p className="text-xs text-white/60">Pause Count</p>
+          <p className="mt-1 text-base font-semibold text-white">
+            {communication.pause_count ?? 0}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+          <p className="text-xs text-white/60">Comm. Score</p>
+          <p className="mt-1 text-base font-semibold text-white">
+            {Number(communication.communication_score ?? 0).toFixed(2)} / 10
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-3 text-xs text-white/55">
+        Based on transcript length, speech duration, fillers, and speaking pace.
+      </p>
+    </div>
+  );
+}
+
 export default function Interview() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
@@ -33,6 +84,8 @@ export default function Interview() {
   const [enableVideo, setEnableVideo] = useState(false);
   const [videoBlob, setVideoBlob] = useState(null);
   const [videoMsg, setVideoMsg] = useState("");
+
+  const [communication, setCommunication] = useState(null);
 
   const [secondsLeft, setSecondsLeft] = useState(SECONDS_PER_QUESTION);
   const [timeUp, setTimeUp] = useState(false);
@@ -68,6 +121,7 @@ export default function Interview() {
     autoSubmittedRef.current = false;
     setVideoBlob(null);
     setVideoMsg("");
+    setCommunication(null);
   }, [session?.session_id, session?.question_index, finalReport]);
 
   useEffect(() => {
@@ -89,6 +143,7 @@ export default function Interview() {
     setAnswer("");
     setVideoBlob(null);
     setVideoMsg("");
+    setCommunication(null);
     setLoadingStart(true);
 
     try {
@@ -132,6 +187,7 @@ export default function Interview() {
       setAnswer("");
       setVideoBlob(null);
       setVideoMsg("");
+      setCommunication(null);
 
       if (res.data.finished) {
         setFinalReport(res.data);
@@ -193,6 +249,7 @@ export default function Interview() {
 
       setVideoBlob(null);
       setVideoMsg("");
+      setCommunication(res.data.communication || null);
 
       if (res.data.finished) {
         setFinalReport(res.data);
@@ -245,6 +302,7 @@ export default function Interview() {
 
       setVideoBlob(null);
       setVideoMsg("");
+      setCommunication(null);
 
       if (res.data.finished) {
         setFinalReport(res.data);
@@ -287,6 +345,7 @@ export default function Interview() {
       setAnswer("");
       setVideoBlob(null);
       setVideoMsg("");
+      setCommunication(null);
 
       try {
         const res = await api.get(
@@ -446,6 +505,7 @@ export default function Interview() {
                   setAnswer("");
                   setVideoBlob(null);
                   setVideoMsg("");
+                  setCommunication(null);
                   setSession({
                     ...resumeSession,
                     is_follow_up: false,
@@ -486,6 +546,8 @@ export default function Interview() {
                 {finalReport.verdict ?? "—"}
               </span>
             </p>
+
+            {communication ? <CommunicationCard communication={communication} /> : null}
 
             <div className="flex flex-wrap gap-3 pt-2">
               {sid ? (
@@ -576,6 +638,8 @@ export default function Interview() {
             </div>
 
             <p className="text-white/70">{session.question}</p>
+
+            {communication ? <CommunicationCard communication={communication} /> : null}
 
             <div className="flex items-center gap-3">
               <input

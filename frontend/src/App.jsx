@@ -7,6 +7,7 @@ import Insights from "./pages/Insights";
 import Analytics from "./pages/Analytics";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/interview" element={<Interview />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Routes>
     </BrowserRouter>

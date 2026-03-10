@@ -16,7 +16,10 @@ from backend.services.interview_service import (
     delete_interview_session,
 )
 
-from backend.services.coding_question_service import get_coding_question
+from backend.services.coding_question_service import (
+    get_coding_question,
+    get_coding_question_by_id,
+)
 from backend.services.code_runner_service import run_python_code_submission
 
 router = APIRouter(tags=["Interview"])
@@ -78,13 +81,18 @@ def start_coding_interview(
 
 @router.post("/submit-code")
 def submit_code(
+    question_id: str = Body(..., embed=True),
     code: str = Body(..., embed=True),
-    function_name: str = Body(..., embed=True),
-    test_cases: list = Body(..., embed=True),
     user: User = Depends(get_current_user),
 ):
     try:
-        result = run_python_code_submission(code, function_name, test_cases)
+        question = get_coding_question_by_id(question_id)
+
+        result = run_python_code_submission(
+            code=code,
+            function_name=question["function_name"],
+            test_cases=question["hidden_test_cases"],
+        )
 
         score = 0
         if result["total_count"] > 0:
@@ -99,6 +107,8 @@ def submit_code(
             "results": result["results"],
             "error": result.get("error"),
         }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Code submission failed: {str(e)}")
 

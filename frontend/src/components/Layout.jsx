@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useMotionValue, useSpring } from "framer-motion";
 import Navbar from "./Navbar";
@@ -35,7 +35,6 @@ function GridLayer() {
 }
 
 function PremiumBackground() {
-  // Spotlight follows mouse
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
   const sx = useSpring(mx, { stiffness: 120, damping: 20, mass: 0.2 });
@@ -52,10 +51,8 @@ function PremiumBackground() {
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
-      {/* base */}
       <div className="absolute inset-0 bg-black" />
 
-      {/* blobs */}
       <motion.div
         className="absolute -top-48 -left-48 h-[640px] w-[640px] rounded-full blur-3xl"
         animate={{ x: [0, 40, 0], y: [0, 25, 0], opacity: [0.25, 0.38, 0.25] }}
@@ -75,7 +72,6 @@ function PremiumBackground() {
         }}
       />
 
-      {/* spotlight */}
       <motion.div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -86,7 +82,6 @@ function PremiumBackground() {
         }}
       />
 
-      {/* vignette */}
       <div
         className="absolute inset-0"
         style={{
@@ -109,6 +104,7 @@ export default function Layout() {
     if (p.startsWith("/interview")) return "Interview";
     if (p.startsWith("/insights")) return "Insights";
     if (p.startsWith("/analytics")) return "Analytics";
+    if (p.startsWith("/profile")) return "Profile";
     if (p.startsWith("/login")) return "Login";
     if (p.startsWith("/register")) return "Register";
     return "Dashboard";

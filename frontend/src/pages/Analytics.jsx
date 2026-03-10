@@ -30,7 +30,6 @@ function Bar({ label, value, max = 10 }) {
 }
 
 function MiniBars({ title, rows }) {
-  // rows: [{label, value, max}]
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
       <h2 className="text-xl font-semibold">{title}</h2>
@@ -58,7 +57,6 @@ function MiniBars({ title, rows }) {
   );
 }
 
-/** ✅ NEW: Per-question chart */
 function ScoreProgress({ data }) {
   if (!Array.isArray(data) || data.length === 0) {
     return (
@@ -68,13 +66,17 @@ function ScoreProgress({ data }) {
     );
   }
 
-  // normalize fields (your backend returns: q_no, score, similarity, answer_len)
   const rows = data
     .map((x) => ({
       qNo: x.q_no ?? (x.q_index ?? 0) + 1,
       score: Number(x.score ?? 0),
       similarity: Number(x.similarity ?? 0),
       len: Number(x.answer_len ?? 0),
+      wpm: Number(x.words_per_minute ?? 0),
+      commScore: Number(x.communication_score ?? 0),
+      fillers: Number(x.filler_count ?? 0),
+      pauses: Number(x.pause_count ?? 0),
+      pace: x.pace_label ?? "—",
     }))
     .sort((a, b) => a.qNo - b.qNo);
 
@@ -92,15 +94,23 @@ function ScoreProgress({ data }) {
             <div key={r.qNo} className="rounded-xl border border-white/10 bg-black/30 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="text-white/80">Q{r.qNo}</span>
-                <div className="flex items-center gap-3 text-white/60">
+                <div className="flex flex-wrap items-center gap-3 text-white/60">
                   <span>Score: <span className="text-white/85">{r.score}</span></span>
                   <span>Sim: <span className="text-white/85">{r.similarity.toFixed(2)}</span></span>
                   <span>Len: <span className="text-white/85">{r.len}</span></span>
+                  <span>WPM: <span className="text-white/85">{r.wpm.toFixed(1)}</span></span>
+                  <span>Pace: <span className="text-white/85">{r.pace}</span></span>
                 </div>
               </div>
 
               <div className="mt-3 h-3 w-full rounded-full bg-white/10 overflow-hidden">
                 <div className="h-full bg-white/70 rounded-full" style={{ width: `${pct}%` }} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-3 text-xs text-white/55">
+                <span>Comm Score: {r.commScore.toFixed(2)}</span>
+                <span>Fillers: {r.fillers}</span>
+                <span>Pauses: {r.pauses}</span>
               </div>
             </div>
           );
@@ -120,18 +130,18 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
 
-  useEffect(() => {
-    if (!sessionId) {
-      setMsg("Missing session_id. Go from Dashboard → Analytics.");
-      setLoading(false);
-      return;
-    }
+  const isOverall = !sessionId || !!data?.overall;
 
+  useEffect(() => {
     (async () => {
       setLoading(true);
       setMsg("");
       try {
-        const res = await api.get(`/analytics/${encodeURIComponent(sessionId)}`);
+        const url = sessionId
+          ? `/analytics/${encodeURIComponent(sessionId)}`
+          : "/analytics";
+
+        const res = await api.get(url);
         setData(res.data);
       } catch (e) {
         setMsg(e?.response?.data?.detail || "Failed to load analytics");
@@ -158,9 +168,17 @@ export default function Analytics() {
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold">Analytics</h1>
+            <h1 className="text-3xl font-semibold">
+              {isOverall ? "Overall Analytics" : "Analytics"}
+            </h1>
             <p className="mt-2 text-white/70">
-              Session: <span className="text-white/90">{sessionId || "—"}</span>
+              {isOverall ? (
+                <>User-level analytics across all sessions</>
+              ) : (
+                <>
+                  Session: <span className="text-white/90">{sessionId || "—"}</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -172,14 +190,16 @@ export default function Analytics() {
               Back
             </button>
 
-            {sessionId ? (
-              <Link
-                to={`/insights?session_id=${encodeURIComponent(sessionId)}`}
-                className="bg-white text-black px-4 py-2 rounded-xl font-medium hover:scale-[1.02] transition"
-              >
-                Insights
-              </Link>
-            ) : null}
+            <Link
+              to={
+                sessionId
+                  ? `/insights?session_id=${encodeURIComponent(sessionId)}`
+                  : "/insights"
+              }
+              className="bg-white text-black px-4 py-2 rounded-xl font-medium hover:scale-[1.02] transition"
+            >
+              Insights
+            </Link>
 
             <button
               onClick={() => setShowRaw((v) => !v)}
@@ -200,9 +220,85 @@ export default function Analytics() {
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
             Loading analytics...
           </div>
-        ) : !data ? null : (
+        ) : !data ? null : isOverall ? (
           <div className="mt-6 grid gap-4">
-            {/* Summary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Total Sessions"
+                value={data.total_sessions ?? 0}
+                sub="All interview sessions"
+              />
+              <StatCard
+                label="Completed"
+                value={data.completed_sessions ?? 0}
+                sub="Finished sessions"
+              />
+              <StatCard
+                label="Incomplete"
+                value={data.incomplete_sessions ?? 0}
+                sub="Pending sessions"
+              />
+              <StatCard
+                label="Avg Total Score"
+                value={Number(data.average_total_score ?? 0).toFixed(2)}
+                sub="Per session"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Bar
+                label="Completion Rate"
+                value={Number(data.completed_sessions ?? 0)}
+                max={Math.max(1, Number(data.total_sessions ?? 0))}
+              />
+              <Bar
+                label="Average Total Score"
+                value={Number(data.average_total_score ?? 0)}
+                max={30}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <MiniBars
+                title="Domain Distribution"
+                rows={Object.entries(data.domains || {}).map(([label, value]) => ({
+                  label,
+                  value: Number(value || 0),
+                  max: Math.max(
+                    1,
+                    ...Object.values(data.domains || {}).map((v) => Number(v || 0))
+                  ),
+                }))}
+              />
+
+              <MiniBars
+                title="Difficulty Distribution"
+                rows={Object.entries(data.difficulty_distribution || {}).map(
+                  ([label, value]) => ({
+                    label,
+                    value: Number(value || 0),
+                    max: Math.max(
+                      1,
+                      ...Object.values(data.difficulty_distribution || {}).map((v) =>
+                        Number(v || 0)
+                      )
+                    ),
+                  })
+                )}
+              />
+            </div>
+
+            {showRaw ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-xl font-semibold">Raw JSON</h2>
+                <pre className="mt-4 text-xs bg-black/40 p-4 rounded-xl overflow-auto">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 label="Progress"
@@ -224,16 +320,36 @@ export default function Analytics() {
               />
             </div>
 
-            {/* ✅ NEW: Per-question chart */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Avg Words / Min"
+                value={Number(data.communication?.avg_words_per_minute ?? 0).toFixed(2)}
+                sub="Speaking speed"
+              />
+              <StatCard
+                label="Avg Comm Score"
+                value={`${Number(data.communication?.avg_communication_score ?? 0).toFixed(2)} / 10`}
+                sub="Voice communication"
+              />
+              <StatCard
+                label="Total Fillers"
+                value={data.communication?.total_filler_count ?? 0}
+                sub="um, uh, like..."
+              />
+              <StatCard
+                label="Total Pauses"
+                value={data.communication?.total_pause_count ?? 0}
+                sub="Estimated pauses"
+              />
+            </div>
+
             <ScoreProgress data={data.score_per_question || []} />
 
-            {/* Bars */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Bar label="Average Score" value={Number(data.scores?.average_score ?? 0)} max={10} />
               <Bar label="Average Similarity" value={Number(data.similarity?.avg_similarity ?? 0)} max={1} />
             </div>
 
-            {/* Length + Similarity spread */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <MiniBars
                 title="Answer Length (chars)"
@@ -266,7 +382,6 @@ export default function Analytics() {
               />
             </div>
 
-            {/* Best/Worst */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <h2 className="text-xl font-semibold">Best Answer</h2>
@@ -315,7 +430,6 @@ export default function Analytics() {
               </div>
             </div>
 
-            {/* Feedback summary */}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
               <h2 className="text-xl font-semibold">Feedback Summary</h2>
               <p className="text-white/60 text-sm mt-1">Most repeated feedback messages</p>
@@ -341,7 +455,6 @@ export default function Analytics() {
               </div>
             </div>
 
-            {/* Raw JSON toggle */}
             {showRaw ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <h2 className="text-xl font-semibold">Raw JSON</h2>

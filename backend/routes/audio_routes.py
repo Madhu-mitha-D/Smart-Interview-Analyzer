@@ -3,11 +3,13 @@ from sqlalchemy.orm import Session
 import tempfile
 import os
 import whisper
+import librosa
 
 from backend.database.deps import get_db
 from backend.routes.auth_routes import get_current_user
 from backend.models.user_model import User
 from backend.services.interview_service import submit_interview_answer
+from backend.services.communication_service import analyze_communication
 
 router = APIRouter(prefix="/audio", tags=["Audio"])
 
@@ -33,6 +35,7 @@ async def audio_submit_answer(
         raise HTTPException(status_code=400, detail="No file provided")
 
     suffix = os.path.splitext(file.filename)[1] or ".wav"
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp_path = tmp.name
         tmp.write(await file.read())
@@ -45,10 +48,20 @@ async def audio_submit_answer(
         if not text:
             raise HTTPException(status_code=400, detail="No speech detected")
 
-        resp = submit_interview_answer(db, user.id, session_id, text)
+        duration_sec = 0.0
+        try:
+            y, sr = librosa.load(tmp_path, sr=None)
+            duration_sec = librosa.get_duration(y=y, sr=sr)
+        except Exception:
+            duration_sec = 0.0
+
+        communication = analyze_communication(text, duration_sec)
+
+        resp = submit_interview_answer(db, user.id, session_id, text, communication=communication)
         resp["transcript"] = text
         resp["stt_model"] = MODEL_NAME
         resp["audio_filename"] = file.filename
+        resp["communication"] = communication
         return resp
 
     except HTTPException:

@@ -84,7 +84,8 @@ def submit_interview_answer(
     db: Session,
     user_id: int,
     session_id: str,
-    answer: str
+    answer: str,
+    communication: dict | None = None,
 ):
     interview = db.execute(
         select(Interview).where(
@@ -125,6 +126,8 @@ def submit_interview_answer(
         domain=interview.domain
     )
 
+    comm = communication or {}
+
     ans = Answer(
         interview_id=interview.id,
         question_index=idx,
@@ -132,7 +135,13 @@ def submit_interview_answer(
         answer_text=answer,
         score=score,
         feedback=feedback,
-        similarity=sim
+        similarity=sim,
+        words_per_minute=comm.get("words_per_minute"),
+        pace_label=comm.get("pace_label"),
+        filler_count=comm.get("filler_count"),
+        pause_count=comm.get("pause_count"),
+        communication_score=comm.get("communication_score"),
+        audio_duration_sec=comm.get("duration_sec"),
     )
     db.add(ans)
 
@@ -238,7 +247,15 @@ def submit_interview_answer(
                     "answer": a.answer_text,
                     "score": a.score,
                     "similarity": float(a.similarity or 0.0),
-                    "feedback": a.feedback
+                    "feedback": a.feedback,
+                    "communication": {
+                        "words_per_minute": a.words_per_minute,
+                        "pace_label": a.pace_label,
+                        "filler_count": a.filler_count,
+                        "pause_count": a.pause_count,
+                        "communication_score": a.communication_score,
+                        "duration_sec": a.audio_duration_sec,
+                    },
                 }
                 for a in all_answers
             ]
