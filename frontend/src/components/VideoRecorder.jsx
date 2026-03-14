@@ -1,28 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
-export default function VideoRecorder({
-  onRecordingComplete,
-  onError,
-  autoStartPreview = true,
-}) {
+const VideoRecorder = forwardRef(function VideoRecorder(
+  { onError, autoStartPreview = true },
+  ref
+) {
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const chunksRef = useRef([]);
-  const objectUrlRef = useRef("");
+  const stopPromiseResolverRef = useRef(null);
 
   const [previewing, setPreviewing] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [videoURL, setVideoURL] = useState("");
   const [error, setError] = useState("");
-
-  const clearVideoUrl = () => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = "";
-    }
-    setVideoURL("");
-  };
 
   const stopTracks = () => {
     if (streamRef.current) {
@@ -31,12 +27,32 @@ export default function VideoRecorder({
     }
   };
 
+  const attachStreamToVideo = (stream) => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  };
+
+  const getSupportedMimeType = () => {
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+      "video/mp4",
+    ];
+
+    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+  };
+
   const startPreview = async () => {
+    if (streamRef.current) {
+      attachStreamToVideo(streamRef.current);
+      setPreviewing(true);
+      return true;
+    }
+
     try {
       setError("");
-
-      // Stop old preview first if already running
-      stopTracks();
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -44,12 +60,9 @@ export default function VideoRecorder({
       });
 
       streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
+      attachStreamToVideo(stream);
       setPreviewing(true);
+      return true;
     } catch (err) {
       let msg = "Unable to access camera and microphone.";
 
@@ -60,7 +73,10 @@ export default function VideoRecorder({
         err?.name === "PermissionDeniedError"
       ) {
         msg = "Camera or microphone permission was denied.";
-      } else if (err?.name === "NotReadableError" || err?.name === "TrackStartError") {
+      } else if (
+        err?.name === "NotReadableError" ||
+        err?.name === "TrackStartError"
+      ) {
         msg = "Camera is already in use by another application.";
       } else if (err?.name === "OverconstrainedError") {
         msg = "Requested camera settings are not supported on this device.";
@@ -69,41 +85,48 @@ export default function VideoRecorder({
       setError(msg);
       setPreviewing(false);
       if (onError) onError(msg);
+      return false;
     }
   };
 
   const stopPreview = () => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+
     stopTracks();
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
 
+    setRecording(false);
     setPreviewing(false);
   };
 
-  const getSupportedMimeType = () => {
-    const candidates = [
-      "video/webm;codecs=vp9,opus",
-      "video/webm;codecs=vp8,opus",
-      "video/webm",
-      "video/mp4", // may not work in many browsers for MediaRecorder
-    ];
-
-    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
-  };
-
-  const startRecording = () => {
-    if (!streamRef.current) {
-      const msg = "Start camera preview first.";
+  const startRecording = async () => {
+    const ready = await startPreview();
+    if (!ready || !streamRef.current) {
+      const msg = "Camera preview is not available.";
       setError(msg);
       if (onError) onError(msg);
-      return;
+      return false;
+    }
+
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      return true;
     }
 
     try {
       setError("");
-      clearVideoUrl();
       chunksRef.current = [];
 
       const mimeType = getSupportedMimeType();
@@ -124,42 +147,70 @@ export default function VideoRecorder({
         setError(msg);
         setRecording(false);
         if (onError) onError(msg);
+
+        if (stopPromiseResolverRef.current) {
+          stopPromiseResolverRef.current(null);
+          stopPromiseResolverRef.current = null;
+        }
       };
 
       recorder.onstop = () => {
         try {
-          const type = mimeType || "video/webm";
-          const blob = new Blob(chunksRef.current, { type });
+          const blob = new Blob(chunksRef.current, {
+            type: mimeType || "video/webm",
+          });
 
-          const url = URL.createObjectURL(blob);
-          objectUrlRef.current = url;
-          setVideoURL(url);
+          setRecording(false);
 
-          if (onRecordingComplete) {
-            onRecordingComplete(blob);
+          if (stopPromiseResolverRef.current) {
+            stopPromiseResolverRef.current(blob);
+            stopPromiseResolverRef.current = null;
           }
         } catch {
           const msg = "Failed to process recorded video.";
           setError(msg);
           if (onError) onError(msg);
+
+          if (stopPromiseResolverRef.current) {
+            stopPromiseResolverRef.current(null);
+            stopPromiseResolverRef.current = null;
+          }
         }
       };
 
       recorder.start();
       setRecording(true);
-    } catch (err) {
+      return true;
+    } catch {
       const msg = "Failed to start recording.";
       setError(msg);
       if (onError) onError(msg);
+      return false;
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && recording) {
-      mediaRecorderRef.current.stop();
-      setRecording(false);
+  const stopRecording = async () => {
+    if (
+      !mediaRecorderRef.current ||
+      mediaRecorderRef.current.state !== "recording"
+    ) {
+      return null;
     }
+
+    return new Promise((resolve) => {
+      stopPromiseResolverRef.current = resolve;
+      mediaRecorderRef.current.stop();
+    });
   };
+
+  useImperativeHandle(ref, () => ({
+    startPreview,
+    stopPreview,
+    startRecording,
+    stopRecording,
+    isPreviewing: () => previewing,
+    isRecording: () => recording,
+  }));
 
   useEffect(() => {
     if (autoStartPreview) {
@@ -167,23 +218,10 @@ export default function VideoRecorder({
     }
 
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop();
-      }
       stopPreview();
-      clearVideoUrl();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const downloadVideo = () => {
-    if (!videoURL) return;
-
-    const a = document.createElement("a");
-    a.href = videoURL;
-    a.download = "interview-recording.webm";
-    a.click();
-  };
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
@@ -191,15 +229,15 @@ export default function VideoRecorder({
         <h3 className="text-lg font-semibold">Video Interview</h3>
         <div className="text-sm text-white/60">
           {recording
-            ? "Recording..."
+            ? "Recording answer..."
             : previewing
-            ? "Camera Ready"
-            : "Camera Off"}
+            ? "Camera ready"
+            : "Camera off"}
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-red-200 text-sm">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
           {error}
         </div>
       ) : null}
@@ -214,62 +252,12 @@ export default function VideoRecorder({
         />
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        {!previewing ? (
-          <button
-            onClick={startPreview}
-            disabled={recording}
-            className="px-4 py-2 rounded-xl bg-white text-black font-medium hover:scale-[1.02] transition disabled:opacity-50 disabled:hover:scale-100"
-          >
-            Start Camera
-          </button>
-        ) : (
-          <button
-            onClick={stopPreview}
-            disabled={recording}
-            className="px-4 py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition disabled:opacity-50"
-          >
-            Stop Camera
-          </button>
-        )}
-
-        {!recording ? (
-          <button
-            onClick={startRecording}
-            disabled={!previewing}
-            className="px-4 py-2 rounded-xl bg-white text-black font-medium hover:scale-[1.02] transition disabled:opacity-50 disabled:hover:scale-100"
-          >
-            Start Recording
-          </button>
-        ) : (
-          <button
-            onClick={stopRecording}
-            className="px-4 py-2 rounded-xl border border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20 transition"
-          >
-            Stop Recording
-          </button>
-        )}
-
-        {videoURL ? (
-          <button
-            onClick={downloadVideo}
-            className="px-4 py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition"
-          >
-            Download Video
-          </button>
-        ) : null}
+      <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/65">
+        Camera stays active for the whole interview. Each answer is recorded
+        automatically and submitted when you press <span className="text-white">Submit</span>.
       </div>
-
-      {videoURL ? (
-        <div className="space-y-2">
-          <p className="text-sm text-white/70">Recorded Preview</p>
-          <video
-            src={videoURL}
-            controls
-            className="w-full rounded-2xl border border-white/10"
-          />
-        </div>
-      ) : null}
     </div>
   );
-}
+});
+
+export default VideoRecorder;

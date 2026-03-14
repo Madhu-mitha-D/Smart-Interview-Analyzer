@@ -177,16 +177,15 @@ export default function Interview() {
   const [interviewMode, setInterviewMode] = useState("domain");
 
   const [enableVideo, setEnableVideo] = useState(false);
-  const [videoBlob, setVideoBlob] = useState(null);
-  const [videoMsg, setVideoMsg] = useState("");
-
   const [communication, setCommunication] = useState(null);
 
   const [secondsLeft, setSecondsLeft] = useState(SECONDS_PER_QUESTION);
   const [timeUp, setTimeUp] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+
   const autoSubmittedRef = useRef(false);
+  const videoRecorderRef = useRef(null);
 
   const forceLogout = () => {
     localStorage.removeItem("token");
@@ -198,13 +197,51 @@ export default function Interview() {
     setShowExitModal(true);
   };
 
-  const confirmExit = () => {
+  const confirmExit = async () => {
+    try {
+      await videoRecorderRef.current?.stopPreview?.();
+    } catch {}
     setShowExitModal(false);
     nav("/");
   };
 
   const cancelExit = () => {
     setShowExitModal(false);
+  };
+
+  const applyInterviewResponse = (data, options = {}) => {
+    const { communicationData = null, successPrefix = "" } = options;
+
+    if (communicationData) {
+      setCommunication(communicationData);
+    } else {
+      setCommunication(null);
+    }
+
+    if (data.finished) {
+      setFinalReport(data);
+      setMsg("🎉 Interview Finished!");
+      return;
+    }
+
+    setSession((prev) => ({
+      ...prev,
+      question_index: data.next_question_index,
+      question: data.next_question,
+      difficulty: data.current_difficulty || prev.difficulty,
+      is_follow_up: !!data.is_follow_up,
+    }));
+
+    if (data.is_follow_up) {
+      setMsg("Follow-up question generated.");
+    } else {
+      const prefix = successPrefix ? `${successPrefix} ` : "";
+      setMsg(
+        `${prefix}Score: ${data.score} | Similarity: ${Number(
+          data.similarity
+        ).toFixed(2)}`
+      );
+    }
   };
 
   useEffect(() => {
@@ -214,8 +251,6 @@ export default function Interview() {
     setIsPaused(false);
     setShowExitModal(false);
     autoSubmittedRef.current = false;
-    setVideoBlob(null);
-    setVideoMsg("");
     setCommunication(null);
   }, [session?.session_id, session?.question_index, finalReport]);
 
@@ -236,8 +271,6 @@ export default function Interview() {
     setFinalReport(null);
     setSession(null);
     setAnswer("");
-    setVideoBlob(null);
-    setVideoMsg("");
     setCommunication(null);
     setLoadingStart(true);
 
@@ -257,7 +290,7 @@ export default function Interview() {
     }
   };
 
-  const submit = async (forcedAnswer) => {
+  const submitTextOnly = async (forcedAnswer) => {
     if (!session) return;
 
     const payloadAnswer =
@@ -280,32 +313,7 @@ export default function Interview() {
       });
 
       setAnswer("");
-      setVideoBlob(null);
-      setVideoMsg("");
-      setCommunication(null);
-
-      if (res.data.finished) {
-        setFinalReport(res.data);
-        setMsg("🎉 Interview Finished!");
-      } else {
-        setSession((prev) => ({
-          ...prev,
-          question_index: res.data.next_question_index,
-          question: res.data.next_question,
-          difficulty: res.data.current_difficulty || prev.difficulty,
-          is_follow_up: !!res.data.is_follow_up,
-        }));
-
-        if (res.data.is_follow_up) {
-          setMsg("Follow-up question generated.");
-        } else {
-          setMsg(
-            `Score: ${res.data.score} | Similarity: ${Number(
-              res.data.similarity
-            ).toFixed(2)}`
-          );
-        }
-      }
+      applyInterviewResponse(res.data);
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) return forceLogout();
@@ -320,7 +328,12 @@ export default function Interview() {
     if (autoSubmittedRef.current) return;
 
     autoSubmittedRef.current = true;
-    submit("(Time up) " + ((answer || "").trim() || "(No answer)"));
+
+    if (enableVideo) {
+      handleMainSubmit("(Time up)");
+    } else {
+      submitTextOnly("(Time up) " + ((answer || "").trim() || "(No answer)"));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeUp]);
 
@@ -342,32 +355,11 @@ export default function Interview() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setVideoBlob(null);
-      setVideoMsg("");
-      setCommunication(res.data.communication || null);
-
-      if (res.data.finished) {
-        setFinalReport(res.data);
-        setMsg("🎉 Interview Finished!");
-      } else {
-        setSession((prev) => ({
-          ...prev,
-          question_index: res.data.next_question_index,
-          question: res.data.next_question,
-          difficulty: res.data.current_difficulty || prev.difficulty,
-          is_follow_up: !!res.data.is_follow_up,
-        }));
-
-        if (res.data.is_follow_up) {
-          setMsg("Follow-up question generated.");
-        } else {
-          setMsg(
-            `Audio scored ✅ Score: ${res.data.score} | Similarity: ${Number(
-              res.data.similarity
-            ).toFixed(2)}`
-          );
-        }
-      }
+      setAnswer("");
+      applyInterviewResponse(res.data, {
+        communicationData: res.data.communication || null,
+        successPrefix: "Audio scored ✅",
+      });
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) return forceLogout();
@@ -377,14 +369,14 @@ export default function Interview() {
     }
   };
 
-  const submitVideo = async (blob) => {
+  const submitVideoBlob = async (blob) => {
     if (!session?.session_id) {
       setMsg("Start/resume an interview before sending video.");
       return;
     }
 
     setUploadingVideo(true);
-    setMsg("");
+    setMsg("Uploading video...");
 
     try {
       const form = new FormData();
@@ -395,32 +387,10 @@ export default function Interview() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setVideoBlob(null);
-      setVideoMsg("");
-      setCommunication(null);
-
-      if (res.data.finished) {
-        setFinalReport(res.data);
-        setMsg("🎉 Interview Finished!");
-      } else {
-        setSession((prev) => ({
-          ...prev,
-          question_index: res.data.next_question_index,
-          question: res.data.next_question,
-          difficulty: res.data.current_difficulty || prev.difficulty,
-          is_follow_up: !!res.data.is_follow_up,
-        }));
-
-        if (res.data.is_follow_up) {
-          setMsg("Follow-up question generated.");
-        } else {
-          setMsg(
-            `Video scored ✅ Score: ${res.data.score} | Similarity: ${Number(
-              res.data.similarity
-            ).toFixed(2)}`
-          );
-        }
-      }
+      setAnswer("");
+      applyInterviewResponse(res.data, {
+        successPrefix: "Video scored ✅",
+      });
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401) return forceLogout();
@@ -430,6 +400,73 @@ export default function Interview() {
     }
   };
 
+  const handleMainSubmit = async (forcedPrefix = "") => {
+    if (enableVideo) {
+      if (!session?.session_id) {
+        setMsg("Start an interview first.");
+        return;
+      }
+
+      const recorder = videoRecorderRef.current;
+      if (!recorder) {
+        setMsg("Video recorder is not ready.");
+        return;
+      }
+
+      setMsg("");
+
+      try {
+        const blob = await recorder.stopRecording();
+
+        if (!blob || blob.size === 0) {
+          setMsg("No video was recorded for this answer. Please try again.");
+          return;
+        }
+
+        await submitVideoBlob(blob);
+      } catch {
+        setMsg(
+          forcedPrefix
+            ? `${forcedPrefix} Unable to submit video answer.`
+            : "Unable to submit video answer."
+        );
+      }
+
+      return;
+    }
+
+    await submitTextOnly();
+  };
+
+  useEffect(() => {
+    if (!enableVideo) {
+      videoRecorderRef.current?.stopPreview?.();
+      return;
+    }
+
+    if (!session || finalReport) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await videoRecorderRef.current?.startPreview?.();
+        const isAlreadyRecording = videoRecorderRef.current?.isRecording?.();
+        if (!isAlreadyRecording) {
+          await videoRecorderRef.current?.startRecording?.();
+        }
+      } catch {
+        setMsg("Unable to start video recording.");
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [enableVideo, session?.session_id, session?.question_index, finalReport]);
+
+  useEffect(() => {
+    if (finalReport) {
+      videoRecorderRef.current?.stopPreview?.();
+    }
+  }, [finalReport]);
+
   useEffect(() => {
     if (!resumeSessionId) return;
 
@@ -438,8 +475,6 @@ export default function Interview() {
       setMsg("");
       setFinalReport(null);
       setAnswer("");
-      setVideoBlob(null);
-      setVideoMsg("");
       setCommunication(null);
 
       try {
@@ -582,7 +617,7 @@ export default function Interview() {
                         className="h-4 w-4"
                       />
                       <label htmlFor="videoMode" className="text-sm text-white/70">
-                        Enable video interview preview
+                        Enable video interview mode
                       </label>
                     </div>
 
@@ -602,8 +637,6 @@ export default function Interview() {
                       setMsg("");
                       setFinalReport(null);
                       setAnswer("");
-                      setVideoBlob(null);
-                      setVideoMsg("");
                       setCommunication(null);
                       setSession({
                         ...resumeSession,
@@ -763,54 +796,49 @@ export default function Interview() {
                 {enableVideo ? (
                   <div className="mt-5">
                     <VideoRecorder
-                      onRecordingComplete={(blob) => {
-                        setVideoBlob(blob);
-                        setVideoMsg("Video recorded successfully. You can now submit it.");
-                      }}
+                      ref={videoRecorderRef}
                       onError={(errMsg) => {
-                        setVideoMsg(errMsg);
+                        setMsg(errMsg);
                       }}
                     />
                   </div>
+                ) : (
+                  <>
+                    <div className="mt-5">
+                      <AudioRecorder onRecorded={submitAudio} />
+                      {uploadingAudio ? (
+                        <p className="mt-2 text-sm text-white/60">Uploading audio...</p>
+                      ) : null}
+                    </div>
+
+                    <textarea
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      rows={7}
+                      className="mt-5 w-full rounded-2xl border border-white/10 bg-white/5 p-4 focus:outline-none focus:ring-2 focus:ring-white/30"
+                      placeholder="Type your answer here..."
+                      disabled={loadingSubmit || uploadingAudio || uploadingVideo}
+                    />
+                  </>
+                )}
+
+                {enableVideo ? (
+                  <p className="mt-4 text-sm text-white/60">
+                    Camera remains live during the interview. Press submit after answering each question.
+                  </p>
                 ) : null}
-
-                {videoMsg ? (
-                  <p className="mt-3 text-sm text-white/60">{videoMsg}</p>
-                ) : null}
-
-                {videoBlob ? (
-                  <PrimaryButton
-                    onClick={() => submitVideo(videoBlob)}
-                    disabled={uploadingVideo || loadingSubmit || uploadingAudio}
-                    className="mt-4 px-6 py-2 rounded-lg"
-                  >
-                    {uploadingVideo ? "Uploading Video..." : "Submit Recorded Video"}
-                  </PrimaryButton>
-                ) : null}
-
-                <div className="mt-5">
-                  <AudioRecorder onRecorded={submitAudio} />
-                  {uploadingAudio ? (
-                    <p className="mt-2 text-sm text-white/60">Uploading audio...</p>
-                  ) : null}
-                </div>
-
-                <textarea
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  rows={7}
-                  className="mt-5 w-full rounded-2xl border border-white/10 bg-white/5 p-4 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  placeholder="Type your answer here..."
-                  disabled={loadingSubmit || uploadingAudio || uploadingVideo}
-                />
 
                 <div className="mt-5 flex flex-wrap gap-3">
                   <PrimaryButton
-                    onClick={() => submit()}
+                    onClick={() => handleMainSubmit()}
                     disabled={loadingSubmit || uploadingAudio || uploadingVideo}
                     className="px-6 py-2 rounded-lg"
                   >
-                    {loadingSubmit ? "Submitting..." : "Submit"}
+                    {uploadingVideo
+                      ? "Submitting Video..."
+                      : loadingSubmit
+                      ? "Submitting..."
+                      : "Submit"}
                   </PrimaryButton>
 
                   <GhostButton

@@ -1,23 +1,21 @@
-# backend/routes/video_routes.py
-
 from pathlib import Path
 import os
 import subprocess
-import tempfile
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 import whisper
+import librosa
 
 from backend.database.deps import get_db
 from backend.models.user_model import User
 from backend.routes.auth_routes import get_current_user
 from backend.services.interview_service import submit_interview_answer
+from backend.services.communication_service import analyze_communication
 
 router = APIRouter(prefix="/video", tags=["Video"])
 
-# Store uploads on backend
 BASE_UPLOAD_DIR = Path("uploads")
 VIDEO_DIR = BASE_UPLOAD_DIR / "videos"
 AUDIO_DIR = BASE_UPLOAD_DIR / "audio"
@@ -32,14 +30,11 @@ _whisper_model = None
 def get_whisper_model():
     global _whisper_model
     if _whisper_model is None:
-        _whisper_model = whisper.load_model(MODEL_NAME)
+      _whisper_model = whisper.load_model(MODEL_NAME)
     return _whisper_model
 
 
 def extract_audio_from_video(video_path: Path, audio_path: Path):
-    """
-    Uses FFmpeg to extract mono 16kHz WAV audio from video.
-    """
     cmd = [
         "ffmpeg",
         "-y",
@@ -95,7 +90,6 @@ async def video_submit_answer(
     video_path = VIDEO_DIR / video_filename
     audio_path = AUDIO_DIR / audio_filename
 
-    # Save uploaded video
     try:
         with open(video_path, "wb") as f:
             while True:
@@ -107,10 +101,8 @@ async def video_submit_answer(
         raise HTTPException(status_code=500, detail=f"Failed to save video: {e}")
 
     try:
-        # Extract audio
         extract_audio_from_video(video_path, audio_path)
 
-        # Transcribe extracted audio
         model = get_whisper_model()
         result = model.transcribe(str(audio_path))
         transcript = (result.get("text") or "").strip()
@@ -118,8 +110,22 @@ async def video_submit_answer(
         if not transcript:
             raise HTTPException(status_code=400, detail="No speech detected in video")
 
-        # Reuse your existing answer submission service
-        response = submit_interview_answer(db, user.id, session_id, transcript)
+        duration_sec = 0.0
+        try:
+            y, sr = librosa.load(str(audio_path), sr=None)
+            duration_sec = librosa.get_duration(y=y, sr=sr)
+        except Exception:
+            duration_sec = 0.0
+
+        communication = analyze_communication(transcript, duration_sec)
+
+        response = submit_interview_answer(
+            db,
+            user.id,
+            session_id,
+            transcript,
+            communication=communication,
+        )
 
         response["transcript"] = transcript
         response["stt_model"] = MODEL_NAME
@@ -128,6 +134,7 @@ async def video_submit_answer(
         response["video_path"] = str(video_path)
         response["audio_path"] = str(audio_path)
         response["stored"] = True
+        response["communication"] = communication
 
         return response
 
