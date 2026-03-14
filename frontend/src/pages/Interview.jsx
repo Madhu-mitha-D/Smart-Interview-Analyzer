@@ -156,6 +156,19 @@ function AmbientOrb() {
   );
 }
 
+function Surface({ children, className = "" }) {
+  return (
+    <div
+      className={[
+        "rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.03)]",
+        className,
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function Interview() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
@@ -376,7 +389,7 @@ export default function Interview() {
     }
 
     setUploadingVideo(true);
-    setMsg("Uploading video...");
+    setMsg("Uploading and analyzing video...");
 
     try {
       const form = new FormData();
@@ -389,6 +402,7 @@ export default function Interview() {
 
       setAnswer("");
       applyInterviewResponse(res.data, {
+        communicationData: res.data.communication || null,
         successPrefix: "Video scored ✅",
       });
     } catch (err) {
@@ -526,17 +540,15 @@ export default function Interview() {
   const sid = session?.session_id || resumeSessionId;
 
   return (
-    <div className="min-h-screen px-6 py-8 text-white">
+    <div className="min-h-screen px-4 py-5 text-white sm:px-6">
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="mx-auto max-w-5xl"
+        className="mx-auto max-w-7xl"
       >
         {loadingResume ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-white/70">
-            Resuming interview...
-          </div>
+          <Surface className="p-8 text-white/70">Resuming interview...</Surface>
         ) : !session ? (
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/[0.02] p-6 shadow-[0_0_40px_rgba(255,255,255,0.04)] backdrop-blur-xl sm:p-8">
             <AmbientOrb />
@@ -654,7 +666,7 @@ export default function Interview() {
             </div>
           </div>
         ) : finalReport ? (
-          <div className="space-y-5 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_40px_rgba(255,255,255,0.03)]">
+          <Surface className="space-y-5 p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-3xl font-semibold">✅ Interview Completed</h2>
@@ -728,201 +740,185 @@ export default function Interview() {
             ) : null}
 
             {msg && <p className="text-green-400 font-medium">{msg}</p>}
-          </div>
+          </Surface>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-3xl font-semibold">
-                        {session.is_follow_up
-                          ? `Q${(session.question_index ?? 0) + 1}.1`
-                          : `Q${(session.question_index ?? 0) + 1}`}
-                      </h2>
+          <div className="space-y-5">
+            <Surface className="p-5">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_280px] md:items-start">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-3xl font-semibold">
+                          {session.is_follow_up
+                            ? `Q${(session.question_index ?? 0) + 1}.1`
+                            : `Q${(session.question_index ?? 0) + 1}`}
+                        </h2>
 
-                      {session.is_follow_up ? (
-                        <span className="rounded-full border border-blue-400/30 bg-blue-400/10 px-3 py-1 text-xs text-blue-300">
-                          Follow-up
-                        </span>
-                      ) : null}
+                        {session.is_follow_up ? (
+                          <span className="rounded-full border border-blue-400/30 bg-blue-400/10 px-3 py-1 text-xs text-blue-300">
+                            Follow-up
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <p className="mt-4 text-base leading-7 text-white/75">
+                        {session.question}
+                      </p>
                     </div>
 
-                    <p className="mt-4 max-w-3xl text-base leading-7 text-white/75">
-                      {session.question}
+                    <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 text-sm text-white/65">
+                      <p className="text-white/50">Session</p>
+                      <div className="mt-2 break-all text-white/90">
+                        {session.session_id}
+                      </div>
+                    </div>
+                  </div>
+
+                  {communication ? <CommunicationCard communication={communication} /> : null}
+
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h3 className="text-xl font-semibold">Answer Panel</h3>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm text-white/70">
+                          <input
+                            id="videoActive"
+                            type="checkbox"
+                            checked={enableVideo}
+                            onChange={(e) => setEnableVideo(e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                          Use video mode
+                        </label>
+
+                        {communication ? (
+                          <GhostButton
+                            type="button"
+                            onClick={() => setCommunication(null)}
+                            className="px-4 py-2"
+                          >
+                            Clear Comm Card
+                          </GhostButton>
+                        ) : null}
+
+                        <GhostButton
+                          type="button"
+                          onClick={saveAndExit}
+                          className="px-4 py-2"
+                        >
+                          Save & Exit
+                        </GhostButton>
+                      </div>
+                    </div>
+
+                    {enableVideo ? (
+                      <div className="mt-4">
+                        <VideoRecorder
+                          ref={videoRecorderRef}
+                          onError={(errMsg) => {
+                            setMsg(errMsg);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mt-4">
+                          <AudioRecorder onRecorded={submitAudio} />
+                          {uploadingAudio ? (
+                            <p className="mt-2 text-sm text-white/60">Uploading audio...</p>
+                          ) : null}
+                        </div>
+
+                        <textarea
+                          value={answer}
+                          onChange={(e) => setAnswer(e.target.value)}
+                          rows={8}
+                          className="mt-4 w-full rounded-2xl border border-white/10 bg-white/5 p-4 focus:outline-none focus:ring-2 focus:ring-white/30"
+                          placeholder="Type your answer here..."
+                          disabled={loadingSubmit || uploadingAudio || uploadingVideo}
+                        />
+                      </>
+                    )}
+
+                    {enableVideo ? (
+                      <p className="mt-4 text-sm text-white/60">
+                        Camera remains live during the interview. Press submit after answering each question.
+                      </p>
+                    ) : null}
+
+                    {msg ? (
+                      <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                        {msg}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <PrimaryButton
+                        onClick={() => handleMainSubmit()}
+                        disabled={loadingSubmit || uploadingAudio || uploadingVideo}
+                        className="px-6 py-2.5 rounded-lg"
+                      >
+                        {uploadingVideo
+                          ? "Submitting Video..."
+                          : loadingSubmit
+                          ? "Submitting..."
+                          : "Submit"}
+                      </PrimaryButton>
+
+                      <GhostButton
+                        onClick={() => nav("/")}
+                        className="px-6 py-2.5 rounded-lg"
+                      >
+                        Back
+                      </GhostButton>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="xl:border-l xl:border-white/10 xl:pl-5">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-center xl:sticky xl:top-24">
+                    <p className="text-sm uppercase tracking-[0.18em] text-white/45">
+                      Time Remaining
                     </p>
-                  </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/65">
-                    Session
-                    <div className="mt-1 max-w-[220px] break-all text-white/90">
-                      {session.session_id}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {communication ? <CommunicationCard communication={communication} /> : null}
-
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-xl font-semibold">Answer Panel</h3>
-
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <input
-                        id="videoActive"
-                        type="checkbox"
-                        checked={enableVideo}
-                        onChange={(e) => setEnableVideo(e.target.checked)}
-                        className="h-4 w-4"
+                    <div className="mt-5 flex justify-center">
+                      <TimerRing
+                        secondsLeft={secondsLeft}
+                        totalSeconds={SECONDS_PER_QUESTION}
+                        isPaused={isPaused}
                       />
-                      <label htmlFor="videoActive" className="text-sm text-white/70">
-                        Use video mode
-                      </label>
                     </div>
 
-                    <GhostButton
-                      type="button"
-                      onClick={saveAndExit}
-                      className="px-4 py-2"
-                    >
-                      Save & Exit
-                    </GhostButton>
-                  </div>
-                </div>
+                    <div className="mt-5 flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsPaused((prev) => !prev)}
+                        className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
+                        title={isPaused ? "Resume timer" : "Pause timer"}
+                      >
+                        {isPaused ? "▶" : "⏸"}
+                      </button>
 
-                {enableVideo ? (
-                  <div className="mt-5">
-                    <VideoRecorder
-                      ref={videoRecorderRef}
-                      onError={(errMsg) => {
-                        setMsg(errMsg);
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div className="mt-5">
-                      <AudioRecorder onRecorded={submitAudio} />
-                      {uploadingAudio ? (
-                        <p className="mt-2 text-sm text-white/60">Uploading audio...</p>
-                      ) : null}
+                      <span
+                        className={`text-sm ${
+                          secondsLeft <= 20 && !isPaused ? "text-red-300" : "text-white/60"
+                        }`}
+                      >
+                        {isPaused ? "Timer is paused" : "Timer is running"}
+                      </span>
                     </div>
-
-                    <textarea
-                      value={answer}
-                      onChange={(e) => setAnswer(e.target.value)}
-                      rows={7}
-                      className="mt-5 w-full rounded-2xl border border-white/10 bg-white/5 p-4 focus:outline-none focus:ring-2 focus:ring-white/30"
-                      placeholder="Type your answer here..."
-                      disabled={loadingSubmit || uploadingAudio || uploadingVideo}
-                    />
-                  </>
-                )}
-
-                {enableVideo ? (
-                  <p className="mt-4 text-sm text-white/60">
-                    Camera remains live during the interview. Press submit after answering each question.
-                  </p>
-                ) : null}
-
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <PrimaryButton
-                    onClick={() => handleMainSubmit()}
-                    disabled={loadingSubmit || uploadingAudio || uploadingVideo}
-                    className="px-6 py-2 rounded-lg"
-                  >
-                    {uploadingVideo
-                      ? "Submitting Video..."
-                      : loadingSubmit
-                      ? "Submitting..."
-                      : "Submit"}
-                  </PrimaryButton>
-
-                  <GhostButton
-                    onClick={() => nav("/")}
-                    className="px-6 py-2 rounded-lg"
-                  >
-                    Back
-                  </GhostButton>
-                </div>
-
-                {msg ? <p className="mt-4 text-green-400 font-medium">{msg}</p> : null}
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-center shadow-[0_0_30px_rgba(255,255,255,0.02)]">
-                <p className="text-sm uppercase tracking-[0.18em] text-white/45">
-                  Time Remaining
-                </p>
-
-                <div className="mt-5 flex justify-center">
-                  <TimerRing
-                    secondsLeft={secondsLeft}
-                    totalSeconds={SECONDS_PER_QUESTION}
-                    isPaused={isPaused}
-                  />
-                </div>
-
-                <div className="mt-5 flex items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsPaused((prev) => !prev)}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
-                    title={isPaused ? "Resume timer" : "Pause timer"}
-                  >
-                    {isPaused ? "▶" : "⏸"}
-                  </button>
-
-                  <span className={`text-sm ${secondsLeft <= 20 && !isPaused ? "text-red-300" : "text-white/60"}`}>
-                    {isPaused ? "Timer is paused" : "Timer is running"}
-                  </span>
+                  </div>
                 </div>
               </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
-                <h3 className="text-lg font-semibold">Interview Tips</h3>
-                <div className="mt-4 space-y-3 text-sm text-white/65">
-                  <p>• Answer the core point first, then support it with a clear example.</p>
-                  <p>• Keep your answer structured and avoid drifting away from the question.</p>
-                  <p>• For behavioral questions, use STAR: Situation → Task → Action → Result.</p>
-                  <p>• Speak clearly and naturally if you use audio mode.</p>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
-                <h3 className="text-lg font-semibold">Session Controls</h3>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <GhostButton
-                    type="button"
-                    onClick={saveAndExit}
-                    className="px-5 py-2"
-                  >
-                    Save & Exit
-                  </GhostButton>
-
-                  <GhostButton
-                    type="button"
-                    onClick={() => setCommunication(null)}
-                    className="px-5 py-2"
-                  >
-                    Clear Comm Card
-                  </GhostButton>
-                </div>
-              </div>
-            </div>
+            </Surface>
           </div>
         )}
 
         {showExitModal ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
-            <div
-              className="absolute inset-0 bg-black/70"
-              onClick={cancelExit}
-            />
+            <div className="absolute inset-0 bg-black/70" onClick={cancelExit} />
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
