@@ -2,9 +2,31 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
+function HomeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[18px] w-[18px]"
+    >
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5 9.5V21h14V9.5" />
+      <path d="M9 21v-6h6v6" />
+    </svg>
+  );
+}
+
 function DashboardIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[18px] w-[18px]"
+    >
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="4" rx="1.5" />
       <rect x="14" y="10" width="7" height="11" rx="1.5" />
@@ -15,7 +37,13 @@ function DashboardIcon() {
 
 function InterviewIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[18px] w-[18px]"
+    >
       <rect x="9" y="3" width="6" height="11" rx="3" />
       <path d="M5 10a7 7 0 0 0 14 0" />
       <path d="M12 17v4" />
@@ -26,7 +54,13 @@ function InterviewIcon() {
 
 function InsightsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[18px] w-[18px]"
+    >
       <path d="M9 18h6" />
       <path d="M10 22h4" />
       <path d="M8.5 14.5C7 13.4 6 11.6 6 9.5A6 6 0 0 1 18 9.5c0 2.1-1 3.9-2.5 5" />
@@ -37,7 +71,13 @@ function InsightsIcon() {
 
 function AnalyticsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[18px] w-[18px]"
+    >
       <path d="M4 20V10" />
       <path d="M10 20V4" />
       <path d="M16 20v-7" />
@@ -48,7 +88,13 @@ function AnalyticsIcon() {
 
 function ProfileIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[18px] w-[18px]"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20a8 8 0 0 1 16 0" />
     </svg>
@@ -57,7 +103,13 @@ function ProfileIcon() {
 
 function LogoutIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[16px] w-[16px]">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      className="h-[16px] w-[16px]"
+    >
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
@@ -66,7 +118,7 @@ function LogoutIcon() {
 }
 
 function NavIconPill({ to, label, icon, active, hovered, onHover, onLeave }) {
-  const expanded = hovered;
+  const expanded = hovered || active;
 
   return (
     <Link to={to} onMouseEnter={onHover} onMouseLeave={onLeave}>
@@ -81,9 +133,7 @@ function NavIconPill({ to, label, icon, active, hovered, onHover, onLeave }) {
             : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
         ].join(" ")}
       >
-        <div className="flex min-w-[20px] items-center justify-center">
-          {icon}
-        </div>
+        <div className="flex min-w-[20px] items-center justify-center">{icon}</div>
 
         <AnimatePresence initial={false}>
           {expanded ? (
@@ -104,7 +154,7 @@ function NavIconPill({ to, label, icon, active, hovered, onHover, onLeave }) {
   );
 }
 
-export default function Navbar({ title = "Dashboard" }) {
+export default function Navbar({ title = "Home" }) {
   const nav = useNavigate();
   const loc = useLocation();
   const [hoveredItem, setHoveredItem] = useState("");
@@ -117,7 +167,8 @@ export default function Navbar({ title = "Dashboard" }) {
     nav("/login", { replace: true });
   };
 
-  const isDashboard = loc.pathname === "/";
+  const isHome = loc.pathname === "/";
+  const isDashboard = loc.pathname.startsWith("/dashboard");
   const isInterview = loc.pathname.startsWith("/interview");
   const isInsights = loc.pathname.startsWith("/insights");
   const isAnalytics = loc.pathname.startsWith("/analytics");
@@ -145,9 +196,19 @@ export default function Navbar({ title = "Dashboard" }) {
 
           {isAuthed ? (
             <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 md:flex">
+              <div className="hidden items-center gap-2 lg:flex">
                 <NavIconPill
                   to="/"
+                  label="Home"
+                  icon={<HomeIcon />}
+                  active={isHome}
+                  hovered={hoveredItem === "home"}
+                  onHover={() => setHoveredItem("home")}
+                  onLeave={() => setHoveredItem("")}
+                />
+
+                <NavIconPill
+                  to="/dashboard"
                   label="Dashboard"
                   icon={<DashboardIcon />}
                   active={isDashboard}

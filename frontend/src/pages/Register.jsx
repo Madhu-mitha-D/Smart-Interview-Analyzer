@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api/axios";
-import { PrimaryButton, GhostButton, DangerButton } from "../components/Buttons";
 
 export default function Register() {
   const nav = useNavigate();
@@ -14,7 +13,7 @@ export default function Register() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, go home
+  // If already logged in, go to Home
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) nav("/", { replace: true });
@@ -24,9 +23,9 @@ export default function Register() {
     e.preventDefault();
     setMsg("");
 
-    const fn = (fullName || "").trim();
-    const em = (email || "").trim();
-    const pw = (password || "").trim();
+    const fn = fullName.trim();
+    const em = email.trim();
+    const pw = password.trim();
 
     if (!fn || !em || !pw) {
       setMsg("⚠️ Please fill all fields.");
@@ -34,6 +33,7 @@ export default function Register() {
     }
 
     setLoading(true);
+
     try {
       await api.post("/auth/register", {
         email: em,
@@ -41,12 +41,19 @@ export default function Register() {
         full_name: fn,
       });
 
-      setMsg("✅ Registered! Redirecting to login...");
-      setTimeout(() => nav("/login", { replace: true }), 900);
+      setMsg("✅ Registration successful! Redirecting to login...");
+
+      setTimeout(() => {
+        nav("/login", { replace: true });
+      }, 1200);
     } catch (err) {
       const status = err?.response?.status;
-      if (status === 409) setMsg("❌ Email already exists. Try login.");
-      else setMsg(err?.response?.data?.detail || "Registration failed");
+
+      if (status === 409) {
+        setMsg("❌ Email already exists. Try logging in.");
+      } else {
+        setMsg(err?.response?.data?.detail || "Registration failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -60,7 +67,7 @@ export default function Register() {
         transition={{ duration: 0.35 }}
         className="w-full max-w-md"
       >
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-8">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
           <h2 className="text-3xl font-semibold mb-6">Create account</h2>
 
           <form onSubmit={handleRegister} className="grid gap-4">
@@ -103,7 +110,9 @@ export default function Register() {
             </Link>
           </div>
 
-          {msg && <p className="mt-4 text-green-400 font-medium">{msg}</p>}
+          {msg && (
+            <p className="mt-4 text-sm font-medium text-green-400">{msg}</p>
+          )}
         </div>
       </motion.div>
     </div>

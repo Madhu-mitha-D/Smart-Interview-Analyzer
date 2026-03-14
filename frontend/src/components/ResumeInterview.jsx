@@ -81,7 +81,7 @@ export default function ResumeInterview({ onStart }) {
       ) : null}
 
       {previewSkills.length > 0 ? (
-        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-5">
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-5">
           <div>
             <h3 className="text-lg font-semibold">Detected Skills</h3>
             <div className="mt-3 flex flex-wrap gap-2">
