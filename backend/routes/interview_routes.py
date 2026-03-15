@@ -1,5 +1,3 @@
-# backend/routes/interview_routes.py
-
 from fastapi import APIRouter, HTTPException, Depends, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -15,12 +13,6 @@ from backend.services.interview_service import (
     get_interview_state,
     delete_interview_session,
 )
-
-from backend.services.coding_question_service import (
-    get_coding_question,
-    get_coding_question_by_id,
-)
-from backend.services.code_runner_service import run_python_code_submission
 
 router = APIRouter(tags=["Interview"])
 
@@ -62,57 +54,6 @@ def submit_answer(
         raise HTTPException(status_code=400, detail=msg)
 
 
-@router.post("/start-coding-interview")
-def start_coding_interview(
-    difficulty: str = Body(default="easy", embed=True),
-    user: User = Depends(get_current_user),
-):
-    try:
-        question = get_coding_question(difficulty)
-        return {
-            "domain": "coding",
-            "difficulty": difficulty,
-            "finished": False,
-            "question": question,
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/submit-code")
-def submit_code(
-    question_id: str = Body(..., embed=True),
-    code: str = Body(..., embed=True),
-    user: User = Depends(get_current_user),
-):
-    try:
-        question = get_coding_question_by_id(question_id)
-
-        result = run_python_code_submission(
-            code=code,
-            function_name=question["function_name"],
-            test_cases=question["hidden_test_cases"],
-        )
-
-        score = 0
-        if result["total_count"] > 0:
-            score = round((result["passed_count"] / result["total_count"]) * 10, 2)
-
-        return {
-            "finished": True,
-            "score": score,
-            "passed": result["passed"],
-            "passed_count": result["passed_count"],
-            "total_count": result["total_count"],
-            "results": result["results"],
-            "error": result.get("error"),
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Code submission failed: {str(e)}")
-
-
 @router.get("/interviews/my")
 def my_interviews(
     db: Session = Depends(get_db),
@@ -140,7 +81,7 @@ def my_interviews(
 
 
 @router.get("/interviews/{session_id}/state")
-def resume_interview(
+def get_interview_session_state(
     session_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),

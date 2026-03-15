@@ -209,14 +209,22 @@ export default function Navbar({ title = "Home" }) {
     >
       <div className="border-b border-white/10 bg-black/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/6">
-              <span className="text-sm font-semibold">SIA</span>
+          <div
+            id="navbar-brand-anchor"
+            className="flex min-w-0 items-center gap-3"
+          >
+            <div className="relative grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/[0.07]">
+              <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(139,92,246,0.16),transparent_45%)]" />
+              <span className="relative text-[11px] font-semibold tracking-[0.18em] text-white">
+                SIA
+              </span>
             </div>
 
             <div className="min-w-0">
-              <p className="text-sm text-white/60">Smart Interview Analyzer</p>
-              <p className="truncate text-base font-semibold">{title}</p>
+              <p className="text-sm font-semibold tracking-tight text-white">
+                Smart Interview Analyzer
+              </p>
+              <p className="truncate text-xs text-white/45">{title}</p>
             </div>
           </div>
 

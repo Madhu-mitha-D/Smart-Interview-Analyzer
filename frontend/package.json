@@ -12,6 +12,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@splinetool/react-spline": "^4.1.0",
+    "@splinetool/runtime": "^1.12.69",
     "axios": "^1.13.6",
     "framer-motion": "^12.34.4",
     "lucide-react": "^0.577.0",

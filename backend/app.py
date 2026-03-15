@@ -14,6 +14,7 @@ from backend.routes.analysis_routes import router as analytics_router
 from backend.routes.insights_routes import router as insights_router
 from backend.routes.audio_routes import router as audio_router
 from backend.routes.interview_routes import router as interview_router
+from backend.routes.coding_routes import router as coding_router
 from backend.routes.video_routes import router as video_router
 from backend.routes.resume_routes import router as resume_router
 
@@ -27,6 +28,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 app.include_router(auth_router)
 app.include_router(interview_router)
+app.include_router(coding_router)
 app.include_router(analytics_router)
 app.include_router(insights_router)
 app.include_router(audio_router)

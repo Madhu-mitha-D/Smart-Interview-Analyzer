@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import api from "../api/axios";
+import { startCodingInterview, submitCode } from "../api/codingApi";
 import { PrimaryButton, GhostButton } from "./Buttons";
 
 const DIFFICULTY_TIME = {
@@ -15,52 +15,94 @@ function formatTime(totalSeconds) {
   return `${mins}:${secs}`;
 }
 
+function DifficultyBadge({ level }) {
+  const style =
+    level === "easy"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+      : level === "medium"
+      ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
+      : "border-red-500/30 bg-red-500/10 text-red-300";
+
+  return (
+    <span
+      className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${style}`}
+    >
+      {level}
+    </span>
+  );
+}
+
+function PanelTab({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-xl px-3 py-2 text-sm transition",
+        active
+          ? "bg-white/10 text-white"
+          : "text-white/55 hover:bg-white/5 hover:text-white",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StatPill({ label, value, warn = false }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-sm font-medium ${
+          warn ? "text-red-300" : "text-white/80"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function buildCodeFeedback({ code, result, problem }) {
   const feedback = [];
-
   if (!result) return feedback;
 
   if (result.passed) {
     feedback.push("Good job — all hidden test cases passed.");
   } else {
-    feedback.push("Your logic is partially correct, but some hidden test cases are failing.");
+    feedback.push(
+      "Some hidden test cases failed. Re-check edge cases and logic."
+    );
   }
 
   const lines = (code || "").split("\n").length;
-  if (lines <= 3) {
-    feedback.push("Your solution is very short. Double-check edge cases.");
-  } else if (lines > 25) {
-    feedback.push("Try simplifying the solution to improve readability.");
+  if (lines <= 4) {
+    feedback.push(
+      "Your solution is very short. Make sure it handles all valid inputs."
+    );
+  } else if (lines > 35) {
+    feedback.push("Try simplifying the code for better readability.");
   }
 
   const lowerCode = (code || "").toLowerCase();
 
-  if (lowerCode.includes("for") && lowerCode.split("for").length - 1 >= 2) {
-    feedback.push("There may be nested iteration here. Think about whether time complexity can be improved.");
+  if (lowerCode.includes("print(") || lowerCode.includes("cout")) {
+    feedback.push("Remove extra debug output before final submission.");
   }
 
-  if (lowerCode.includes("dict") || lowerCode.includes("{}")) {
-    feedback.push("Nice use of a hash-based structure if it fits the problem.");
-  }
-
-  if (lowerCode.includes("print(")) {
-    feedback.push("Remove debug print statements before final submission.");
+  if ((lowerCode.match(/\bfor\b/g) || []).length >= 2) {
+    feedback.push(
+      "This may involve nested iteration. Consider whether time complexity can be improved."
+    );
   }
 
   if (problem?.id === "two_sum") {
-    feedback.push("For Two Sum, a hashmap approach is usually more efficient than checking every pair.");
-  }
-
-  if (problem?.id === "reverse_string") {
-    feedback.push("For reverse string, keep the solution concise and handle empty input safely.");
-  }
-
-  if (problem?.id === "palindrome_check") {
-    feedback.push("Make sure the palindrome logic works correctly for both odd and even length strings.");
-  }
-
-  if (problem?.id === "first_non_repeating") {
-    feedback.push("Think about frequency counting first, then scanning once for the answer.");
+    feedback.push(
+      "For Two Sum, a hashmap-based approach is usually the cleanest efficient solution."
+    );
   }
 
   return feedback.slice(0, 4);
@@ -68,6 +110,8 @@ function buildCodeFeedback({ code, result, problem }) {
 
 export default function CodingInterview() {
   const [difficulty, setDifficulty] = useState("easy");
+  const [language, setLanguage] = useState("python");
+
   const [problem, setProblem] = useState(null);
   const [code, setCode] = useState("");
   const [result, setResult] = useState(null);
@@ -75,9 +119,15 @@ export default function CodingInterview() {
 
   const [secondsLeft, setSecondsLeft] = useState(DIFFICULTY_TIME.easy);
   const [isPaused, setIsPaused] = useState(false);
+  const [activeBottomTab, setActiveBottomTab] = useState("output");
+
   const autoSubmittedRef = useRef(false);
+  const workspaceRef = useRef(null);
+  const resultSectionRef = useRef(null);
+  const editorRef = useRef(null);
 
   const timeLabel = useMemo(() => formatTime(secondsLeft), [secondsLeft]);
+  const feedback = buildCodeFeedback({ code, result, problem });
 
   useEffect(() => {
     if (!problem || result || isPaused) return;
@@ -85,7 +135,7 @@ export default function CodingInterview() {
     if (secondsLeft <= 0) {
       if (!autoSubmittedRef.current) {
         autoSubmittedRef.current = true;
-        submitCode(true);
+        handleSubmitCode(true);
       }
       return;
     }
@@ -97,13 +147,39 @@ export default function CodingInterview() {
     return () => clearTimeout(t);
   }, [problem, result, isPaused, secondsLeft]);
 
+  useEffect(() => {
+    if (!problem || !workspaceRef.current) return;
+
+    const top =
+      workspaceRef.current.getBoundingClientRect().top + window.scrollY - 28;
+
+    window.scrollTo({
+      top,
+      behavior: "smooth",
+    });
+  }, [problem]);
+
+  useEffect(() => {
+    if (!result || !resultSectionRef.current) return;
+
+    setActiveBottomTab("results");
+
+    setTimeout(() => {
+      resultSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 160);
+  }, [result]);
+
   const loadProblem = async () => {
     setResult(null);
     setLoading(true);
     autoSubmittedRef.current = false;
+    setActiveBottomTab("output");
 
     try {
-      const res = await api.post("/start-coding-interview", { difficulty });
+      const res = await startCodingInterview(difficulty, language);
       const q = res.data.question;
 
       setProblem(q);
@@ -118,17 +194,38 @@ export default function CodingInterview() {
     }
   };
 
-  const submitCode = async (auto = false) => {
+  const handleLanguageChange = async (nextLanguage) => {
+    setLanguage(nextLanguage);
+
     if (!problem) return;
 
     setLoading(true);
+    setResult(null);
+    setActiveBottomTab("output");
 
     try {
-      const res = await api.post("/submit-code", {
-        question_id: problem.id,
-        code,
-      });
+      const res = await startCodingInterview(difficulty, nextLanguage);
+      const q = res.data.question;
+      setProblem(q);
+      setCode(q.starter_code || "");
+      setSecondsLeft(DIFFICULTY_TIME[difficulty] || DIFFICULTY_TIME.easy);
+      setIsPaused(false);
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.detail || "Failed to switch language");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleSubmitCode = async (auto = false) => {
+    if (!problem) return;
+
+    setLoading(true);
+    setActiveBottomTab("results");
+
+    try {
+      const res = await submitCode(problem.id, code, language);
       setResult({
         ...res.data,
         autoSubmitted: auto,
@@ -147,208 +244,425 @@ export default function CodingInterview() {
     setResult(null);
     setSecondsLeft(DIFFICULTY_TIME[difficulty] || DIFFICULTY_TIME.easy);
     setIsPaused(false);
+    setActiveBottomTab("output");
+    autoSubmittedRef.current = false;
+    editorRef.current?.focus?.();
+  };
+
+  const changeProblem = () => {
+    setProblem(null);
+    setCode("");
+    setResult(null);
+    setIsPaused(false);
+    setSecondsLeft(DIFFICULTY_TIME.easy);
+    setActiveBottomTab("output");
     autoSubmittedRef.current = false;
   };
 
-  const feedback = buildCodeFeedback({ code, result, problem });
+  const currentLanguage = problem?.language || language;
 
   return (
-    <div className="space-y-6">
-      {!problem && (
-        <>
-          <div className="space-y-2">
-            <label className="text-sm text-white/70">Difficulty</label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-black/30 p-3"
-            >
-              <option value="easy">Easy — 15 min</option>
-              <option value="medium">Medium — 25 min</option>
-              <option value="hard">Hard — 40 min</option>
-            </select>
+    <div ref={workspaceRef} className="space-y-5">
+      {!problem ? (
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-white/60">
+              <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
+              Coding workspace
+            </div>
+
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              Start your coding round
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/65 sm:text-base">
+              Pick a difficulty and language, then begin solving a timed coding
+              question in an interview-style editor.
+            </p>
           </div>
 
-          <PrimaryButton
-            onClick={loadProblem}
-            disabled={loading}
-            className="px-6 py-3"
-          >
-            {loading ? "Loading..." : "Start Coding Question"}
-          </PrimaryButton>
-        </>
-      )}
+          <div className="mt-8 grid max-w-2xl gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Difficulty</label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-black/30 p-3"
+              >
+                <option value="easy">Easy — 15 min</option>
+                <option value="medium">Medium — 25 min</option>
+                <option value="hard">Hard — 40 min</option>
+              </select>
+            </div>
 
-      {problem && (
-        <>
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-xl font-semibold">{problem.title}</h3>
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/70">
-                  {problem.difficulty}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/70">
-                  {problem.language}
-                </span>
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm text-white/70">Language</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-black/30 p-3"
+              >
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+              </select>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-2">
-                <div
-                  className={`text-sm ${
-                    secondsLeft <= 60 && !isPaused ? "text-red-300" : "text-white/70"
-                  }`}
-                >
-                  Time Remaining: <span className="text-white font-medium">{timeLabel}</span>
-                  {isPaused ? <span className="ml-2 text-yellow-300">Paused</span> : null}
+          <div className="mt-6">
+            <PrimaryButton
+              onClick={loadProblem}
+              disabled={loading}
+              className="px-6 py-3"
+            >
+              {loading ? "Loading..." : "Start Coding Question"}
+            </PrimaryButton>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[460px_minmax(0,1fr)]">
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
+            <div className="border-b border-white/10 px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-2xl font-semibold text-white">
+                      {problem.title}
+                    </h3>
+                    <DifficultyBadge level={problem.difficulty || difficulty} />
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                      {currentLanguage.toUpperCase()}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                      Timed Interview
+                    </span>
+                    {(problem.tags || []).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
+              </div>
+            </div>
 
-                {!result ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsPaused((prev) => !prev)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
-                    title={isPaused ? "Resume timer" : "Pause timer"}
-                  >
-                    {isPaused ? "▶" : "⏸"}
-                  </button>
+            <div className="max-h-[720px] overflow-y-auto px-4 py-4 sm:px-5">
+              <div className="space-y-6">
+                <section>
+                  <h4 className="text-lg font-semibold text-white">
+                    Problem Description
+                  </h4>
+                  <p className="mt-3 text-sm leading-7 text-white/78">
+                    {problem.statement || "No problem statement available."}
+                  </p>
+                </section>
+
+                <section>
+                  <h4 className="text-lg font-semibold text-white">Examples</h4>
+                  <div className="mt-3 space-y-4">
+                    {(problem.examples || []).length > 0 ? (
+                      problem.examples.map((ex, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-2xl border border-white/10 bg-black/25 p-4"
+                        >
+                          <p className="text-sm font-medium text-white">
+                            Example {idx + 1}
+                          </p>
+
+                          <div className="mt-3 space-y-2 text-sm text-white/75">
+                            <div>
+                              <span className="font-medium text-white">
+                                Input:
+                              </span>{" "}
+                              {ex.input}
+                            </div>
+                            <div>
+                              <span className="font-medium text-white">
+                                Output:
+                              </span>{" "}
+                              {ex.output}
+                            </div>
+                            {ex.explanation ? (
+                              <div>
+                                <span className="font-medium text-white">
+                                  Explanation:
+                                </span>{" "}
+                                {ex.explanation}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-white/60">
+                        No examples available.
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-lg font-semibold text-white">
+                    Constraints
+                  </h4>
+                  <div className="mt-3 space-y-3">
+                    {(problem.constraints || []).length > 0 ? (
+                      problem.constraints.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/75"
+                        >
+                          {item}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-white/60">
+                        Constraints are not available for this problem yet.
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {(problem.sample_test_cases || []).length > 0 ? (
+                  <section>
+                    <h4 className="text-lg font-semibold text-white">
+                      Sample Test Cases
+                    </h4>
+                    <div className="mt-3 space-y-3">
+                      {problem.sample_test_cases.map((tc, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-2xl border border-white/10 bg-black/25 p-4"
+                        >
+                          <p className="text-sm font-medium text-white">
+                            Sample Case {idx + 1}
+                          </p>
+                          <div className="mt-3 space-y-2 text-sm text-white/75">
+                            <div>
+                              <span className="font-medium text-white">
+                                Input:
+                              </span>{" "}
+                              {JSON.stringify(tc.input)}
+                            </div>
+                            <div>
+                              <span className="font-medium text-white">
+                                Expected:
+                              </span>{" "}
+                              {JSON.stringify(tc.expected)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 ) : null}
               </div>
             </div>
+          </div>
 
-            <p className="text-white/75">{problem.statement}</p>
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
+            <div className="border-b border-white/10 px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <StatPill
+                    label="Time Remaining"
+                    value={timeLabel}
+                    warn={secondsLeft <= 60 && !isPaused}
+                  />
+                  <StatPill
+                    label="Status"
+                    value={result ? "Submitted" : isPaused ? "Paused" : "Active"}
+                  />
+                </div>
 
-            {problem.sample_test_cases?.length ? (
-              <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                <h5 className="font-medium">Sample Test Cases</h5>
-                <div className="mt-3 space-y-2 text-sm text-white/75">
-                  {problem.sample_test_cases.map((tc, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-white/10 bg-white/5 p-3"
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    value={currentLanguage}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                    disabled={loading}
+                  >
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                  </select>
+
+                  {!result ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsPaused((prev) => !prev)}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-sm transition hover:bg-white/10"
+                      title={isPaused ? "Resume timer" : "Pause timer"}
                     >
-                      <div>Input: {JSON.stringify(tc.input)}</div>
-                      <div>Expected: {JSON.stringify(tc.expected)}</div>
-                    </div>
-                  ))}
+                      {isPaused ? "▶" : "⏸"}
+                    </button>
+                  ) : null}
+
+                  <GhostButton
+                    type="button"
+                    onClick={resetCode}
+                    className="px-4 py-2"
+                  >
+                    Reset
+                  </GhostButton>
+
+                  <GhostButton
+                    type="button"
+                    onClick={changeProblem}
+                    className="px-4 py-2"
+                  >
+                    Change Problem
+                  </GhostButton>
+
+                  <PrimaryButton
+                    onClick={() => handleSubmitCode(false)}
+                    disabled={loading || !!result}
+                    className="px-6 py-2.5"
+                  >
+                    {loading ? "Submitting..." : "Submit Solution"}
+                  </PrimaryButton>
                 </div>
               </div>
-            ) : null}
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-white/10">
-            <Editor
-              height="420px"
-              language={problem?.language || "python"}
-              theme="vs-dark"
-              value={code}
-              onChange={(value) => setCode(value || "")}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                wordWrap: "on",
-                padding: { top: 16 },
-                readOnly: !!result,
-              }}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <PrimaryButton
-              onClick={() => submitCode(false)}
-              disabled={loading || !!result}
-              className="px-6 py-3"
-            >
-              {loading ? "Running..." : "Run Code"}
-            </PrimaryButton>
-
-            <GhostButton
-              type="button"
-              onClick={resetCode}
-              className="px-6 py-3"
-            >
-              Reset Code
-            </GhostButton>
-
-            <GhostButton
-              type="button"
-              onClick={() => {
-                setProblem(null);
-                setCode("");
-                setResult(null);
-                setIsPaused(false);
-                setSecondsLeft(DIFFICULTY_TIME.easy);
-                autoSubmittedRef.current = false;
-              }}
-              className="px-6 py-3"
-            >
-              Change Problem
-            </GhostButton>
-          </div>
-        </>
-      )}
-
-      {result && (
-        <div className="space-y-5 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="flex flex-wrap items-center gap-4">
-            <h4 className="text-lg font-semibold">Score: {result.score} / 10</h4>
-            <p className="text-white/70">
-              Passed {result.passed_count} / {result.total_count} hidden test cases
-            </p>
-            {result.autoSubmitted ? (
-              <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs text-yellow-300">
-                Auto-submitted on timeout
-              </span>
-            ) : null}
-          </div>
-
-          {result.passed ? (
-            <p className="text-sm text-green-300">All hidden test cases passed.</p>
-          ) : (
-            <p className="text-sm text-red-300">Some hidden test cases failed.</p>
-          )}
-
-          {result.error ? (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-              {result.error}
             </div>
-          ) : null}
 
-          {feedback.length > 0 ? (
-            <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-              <h5 className="font-medium">Code Feedback</h5>
-              <div className="mt-3 space-y-2 text-sm text-white/75">
-                {feedback.map((item, idx) => (
-                  <div key={idx}>• {item}</div>
-                ))}
+            <div className="h-[430px] border-b border-white/10">
+              <Editor
+                onMount={(editor) => {
+                  editorRef.current = editor;
+                }}
+                height="100%"
+                language={currentLanguage === "cpp" ? "cpp" : currentLanguage}
+                theme="vs-dark"
+                value={code}
+                onChange={(value) => setCode(value || "")}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  automaticLayout: true,
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  padding: { top: 16 },
+                  readOnly: !!result,
+                }}
+              />
+            </div>
+
+            <div className="px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap gap-2">
+                <PanelTab
+                  active={activeBottomTab === "output"}
+                  onClick={() => setActiveBottomTab("output")}
+                >
+                  Output
+                </PanelTab>
+                <PanelTab
+                  active={activeBottomTab === "results"}
+                  onClick={() => setActiveBottomTab("results")}
+                >
+                  Results
+                </PanelTab>
+                <PanelTab
+                  active={activeBottomTab === "feedback"}
+                  onClick={() => setActiveBottomTab("feedback")}
+                >
+                  Feedback
+                </PanelTab>
               </div>
-            </div>
-          ) : null}
 
-          <div className="space-y-3">
-            {result.results?.map((r) => (
               <div
-                key={r.case_no}
-                className={`rounded-xl border p-4 ${
-                  r.passed
-                    ? "border-green-500/30 bg-green-500/10"
-                    : "border-red-500/30 bg-red-500/10"
-                }`}
+                ref={resultSectionRef}
+                className="mt-4 min-h-[180px] rounded-2xl border border-white/10 bg-black/25 p-4"
               >
-                <div className="font-medium">
-                  Case {r.case_no} — {r.passed ? "Passed" : "Failed"}
-                </div>
+                {activeBottomTab === "output" && (
+                  <div className="text-sm text-white/65">
+                    {!result ? (
+                      <>
+                        Submit your solution to evaluate it against hidden test
+                        cases.
+                      </>
+                    ) : result.error ? (
+                      <div className="text-red-300">{result.error}</div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-white/80">
+                          Score:{" "}
+                          <span className="font-semibold">
+                            {result.score} / 10
+                          </span>
+                        </p>
+                        <p>
+                          Passed {result.passed_count} / {result.total_count} hidden
+                          test cases.
+                        </p>
+                        {result.autoSubmitted ? (
+                          <p className="text-yellow-300">
+                            Auto-submitted because the timer finished.
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                <div className="mt-2 text-sm text-white/70">
-                  <div>Input: {JSON.stringify(r.input)}</div>
-                  <div>Expected: {JSON.stringify(r.expected)}</div>
-                  <div>Actual: {JSON.stringify(r.actual)}</div>
-                  {r.error ? <div>Error: {r.error}</div> : null}
-                </div>
+                {activeBottomTab === "results" && (
+                  <div className="space-y-3">
+                    {result?.results?.length ? (
+                      result.results.map((r) => (
+                        <div
+                          key={r.case_no}
+                          className={`rounded-xl border p-4 ${
+                            r.passed
+                              ? "border-green-500/30 bg-green-500/10"
+                              : "border-red-500/30 bg-red-500/10"
+                          }`}
+                        >
+                          <div className="font-medium text-white">
+                            Case {r.case_no} — {r.passed ? "Passed" : "Failed"}
+                          </div>
+
+                          <div className="mt-2 space-y-1 text-sm text-white/70">
+                            <div>Input: {JSON.stringify(r.input)}</div>
+                            <div>Expected: {JSON.stringify(r.expected)}</div>
+                            <div>Actual: {JSON.stringify(r.actual)}</div>
+                            {r.error ? <div>Error: {r.error}</div> : null}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-white/60">
+                        No submission results yet.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {activeBottomTab === "feedback" && (
+                  <div className="space-y-3">
+                    {feedback.length > 0 ? (
+                      feedback.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75"
+                        >
+                          • {item}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-white/60">
+                        Feedback will appear after submission.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import {
+  startInterview,
+  submitAnswer,
+  getInterviewState,
+} from "../api/interviewApi";
 import api from "../api/axios";
 import AudioRecorder from "../components/AudioRecorder";
 import VideoRecorder from "../components/VideoRecorder";
@@ -360,7 +365,7 @@ export default function DomainInterview() {
     stopQuestionSpeech();
 
     try {
-      const res = await api.post("/start-interview", { domain, difficulty });
+      const res = await startInterview(domain, difficulty);
       setSession({
         ...res.data,
         is_follow_up: false,
@@ -393,11 +398,7 @@ export default function DomainInterview() {
     stopQuestionSpeech();
 
     try {
-      const res = await api.post("/submit-answer", {
-        session_id: session.session_id,
-        answer: payloadAnswer || "(No answer)",
-      });
-
+      const res = await submitAnswer(session.session_id, payloadAnswer || "(No answer)");
       setAnswer("");
       applyInterviewResponse(res.data);
     } catch (err) {
@@ -605,9 +606,7 @@ export default function DomainInterview() {
       stopQuestionSpeech();
 
       try {
-        const res = await api.get(
-          `/interviews/${encodeURIComponent(resumeSessionId)}/state`
-        );
+        const res = await getInterviewState(resumeSessionId);
         const data = res.data;
 
         if (data.finished) {

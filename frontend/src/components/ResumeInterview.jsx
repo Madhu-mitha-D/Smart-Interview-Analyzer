@@ -1,5 +1,5 @@
 import { useState } from "react";
-import api from "../api/axios";
+import { startResumeInterview } from "../api/resumeApi";
 import { PrimaryButton } from "./Buttons";
 
 export default function ResumeInterview({ onStart }) {
@@ -22,12 +22,7 @@ export default function ResumeInterview({ onStart }) {
       const formData = new FormData();
       formData.append("resume", resumeFile);
 
-      const res = await api.post("/resume/start-interview", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
+      const res = await startResumeInterview(formData);
       const data = res.data;
 
       setPreviewSkills(data.skills || []);
