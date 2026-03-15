@@ -114,23 +114,20 @@ const VideoRecorder = forwardRef(function VideoRecorder(
 
     let brightness = "good";
     let contrast = "good";
-    let message = "Lighting looks good for video analysis.";
+    let message = "Lighting looks good.";
 
     if (avg < 60 || darkRatio > 0.45) {
       brightness = "low";
-      message =
-        "Low lighting detected. Move to a brighter place or face a light source.";
+      message = "Low light detected. Move to a brighter place.";
     } else if (avg > 185 || brightRatio > 0.25) {
       brightness = "high";
-      message =
-        "Too much brightness detected. Reduce backlight or avoid strong light behind you.";
+      message = "Too much brightness detected. Reduce backlight.";
     }
 
     if (stdDev < 28) {
       contrast = "low";
       if (brightness === "good") {
-        message =
-          "Low contrast detected. Try improving lighting so your face is more clearly visible.";
+        message = "Low contrast detected. Improve face lighting.";
       }
     }
 
@@ -357,70 +354,41 @@ const VideoRecorder = forwardRef(function VideoRecorder(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const qualityBadgeClass =
+  const qualityTone =
     qualityStatus.brightness === "low" || qualityStatus.brightness === "high"
-      ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
+      ? "text-amber-200"
       : qualityStatus.contrast === "low"
-      ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-200"
-      : "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
-
-  const qualityLabel =
-    qualityStatus.brightness === "low"
-      ? "Low Light"
-      : qualityStatus.brightness === "high"
-      ? "Too Bright"
-      : qualityStatus.contrast === "low"
-      ? "Low Contrast"
-      : "Good Conditions";
+      ? "text-yellow-200"
+      : "text-emerald-200";
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold">Video Interview</h3>
-        <div className="text-sm text-white/60">
-          {recording
-            ? "Recording answer..."
-            : previewing
-            ? "Camera ready"
-            : "Camera off"}
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-white">Video Interview</h3>
+        <div className="text-xs text-white/55">
+          {recording ? "Recording..." : previewing ? "Camera ready" : "Camera off"}
         </div>
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+        <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {error}
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-black aspect-video">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
         <video
           ref={videoRef}
           autoPlay
           muted
           playsInline
-          className="h-full w-full object-cover"
+          className="h-[220px] w-full object-cover sm:h-[260px] lg:h-[300px]"
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div
-          className={`rounded-full border px-3 py-1 text-xs font-medium ${qualityBadgeClass}`}
-        >
-          {qualityLabel}
-        </div>
-
-        <div className="text-xs text-white/55">
-          Optimized for future confidence analysis • 640×360 • 15–20 fps
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/65">
-        {qualityStatus.message}
-      </div>
-
-      <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/65">
-        Camera stays active for the whole interview. Each answer is recorded
-        automatically and submitted when you press <span className="text-white">Submit</span>.
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className={`text-sm ${qualityTone}`}>{qualityStatus.message}</p>
+        <div className="text-xs text-white/45">640×360 • 15–20 fps</div>
       </div>
     </div>
   );

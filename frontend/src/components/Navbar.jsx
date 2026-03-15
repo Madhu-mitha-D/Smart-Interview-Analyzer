@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function HomeIcon() {
   return (
@@ -158,6 +158,8 @@ export default function Navbar({ title = "Home" }) {
   const nav = useNavigate();
   const loc = useLocation();
   const [hoveredItem, setHoveredItem] = useState("");
+  const [showNav, setShowNav] = useState(true);
+  const lastScrollY = useRef(0);
 
   const token = localStorage.getItem("token");
   const isAuthed = Boolean(token);
@@ -167,6 +169,27 @@ export default function Navbar({ title = "Home" }) {
     nav("/login", { replace: true });
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+
+      if (currentY <= 16) {
+        setShowNav(true);
+      } else if (currentY > lastScrollY.current + 6) {
+        setShowNav(false);
+      } else if (currentY < lastScrollY.current - 6) {
+        setShowNav(true);
+      }
+
+      lastScrollY.current = currentY;
+    };
+
+    lastScrollY.current = window.scrollY;
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const isHome = loc.pathname === "/";
   const isDashboard = loc.pathname.startsWith("/dashboard");
   const isInterview = loc.pathname.startsWith("/interview");
@@ -175,13 +198,16 @@ export default function Navbar({ title = "Home" }) {
   const isProfile = loc.pathname.startsWith("/profile");
 
   return (
-    <div className="sticky top-0 z-40">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="border-b border-white/10 bg-black/40 backdrop-blur-xl"
-      >
+    <motion.div
+      initial={{ y: 0, opacity: 1 }}
+      animate={{
+        y: showNav ? 0 : -110,
+        opacity: showNav ? 1 : 0,
+      }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className="sticky top-0 z-50"
+    >
+      <div className="border-b border-white/10 bg-black/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/6">
@@ -283,7 +309,7 @@ export default function Navbar({ title = "Home" }) {
             </div>
           )}
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
