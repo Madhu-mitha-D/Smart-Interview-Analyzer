@@ -24,8 +24,10 @@ export default function Layout() {
   const isHome = location.pathname === "/";
 
   return (
-    <div className="relative min-h-screen bg-[#040406] text-white">
-      <div className="relative z-20">
+    <div className="relative min-h-screen text-white">
+      {!isHome && <div className="pointer-events-none fixed inset-0 z-0 bg-black" />}
+
+      <div className="relative z-10">
         <Navbar title={routeTitle} />
 
         <AnimatePresence mode="wait">
@@ -35,7 +37,7 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: -8, filter: "blur(6px)" }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className={isHome ? "" : "mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10"}
+            className={isHome ? "" : "mx-auto max-w-7xl px-6 py-10"}
           >
             <Outlet />
           </motion.div>

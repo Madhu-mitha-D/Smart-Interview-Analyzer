@@ -1,14 +1,50 @@
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import SplineScene from "../components/SplineScene";
+import ScrollText from "../components/ui/ScrollText";
+import WordReveal from "../components/ui/WordReveal";
+import { ContainerScrollAnimation } from "../components/ui/ContainerScrollAnimation";
+import ShaderLinesBackground from "../components/ui/ShaderLinesBackground";
+import OrbitModes from "../components/ui/OrbitModes";
 
 const SCENE_URL = "https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
 
+const orbitItems = [
+  {
+    type: "video",
+    src: "/videos/interview-demo.mp4",
+    eyebrow: "Mock Interview",
+    title: "Practice realistic rounds",
+    desc: "Answer domain questions in a guided flow designed to simulate a real interview experience.",
+  },
+  {
+    type: "video",
+    src: "/videos/resume-demo.mp4",
+    eyebrow: "Resume Mode",
+    title: "Get personalized questions",
+    desc: "Generate targeted interview questions from your skills, projects, and profile.",
+  },
+  {
+    type: "video",
+    src: "/videos/coding-demo.mp4",
+    eyebrow: "Coding Mode",
+    title: "Solve in a focused workspace",
+    desc: "Practice interview-style coding problems in a clean, distraction-free interface.",
+  },
+  {
+    type: "video",
+    src: "/videos/analytics-demo.mp4",
+    eyebrow: "Analytics",
+    title: "Track progress over time",
+    desc: "See score trends, patterns, and insights across repeated sessions.",
+  },
+];
+
 function SectionLabel({ children }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 backdrop-blur-xl">
-      <span className="h-1.5 w-1.5 rounded-full bg-violet-300/90" />
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-white/68 backdrop-blur-md">
+      <span className="h-1.5 w-1.5 rounded-full bg-violet-300" />
       {children}
     </div>
   );
@@ -17,482 +53,474 @@ function SectionLabel({ children }) {
 function SectionTitle({ eyebrow, title, desc, center = false }) {
   return (
     <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
-      {eyebrow ? <SectionLabel>{eyebrow}</SectionLabel> : null}
-      <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-        {title}
-      </h2>
-      {desc ? (
-        <p className="mt-4 text-sm leading-7 text-white/65 sm:text-base">
-          {desc}
-        </p>
-      ) : null}
+      {eyebrow && <SectionLabel>{eyebrow}</SectionLabel>}
+
+      <ScrollText
+        as="h2"
+        text={title}
+        className="mt-5 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl"
+      />
+
+      {desc && (
+        <ScrollText
+          as="p"
+          text={desc}
+          delay={0.08}
+          className="mt-4 text-sm leading-7 text-white/58 sm:text-base"
+        />
+      )}
     </div>
   );
 }
 
-function FeatureCard({ title, desc }) {
+function Surface({ children, className = "" }) {
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.18 }}
-      className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl"
+    <div
+      className={`relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur-xl ${className}`}
     >
-      <h3 className="text-base font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-white/58">{desc}</p>
-    </motion.div>
-  );
-}
-
-function StepCard({ number, title, desc }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-white">
-        {number}
-      </div>
-      <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-white/60">{desc}</p>
-    </div>
-  );
-}
-
-function ModeCard({ title, desc, highlight, onClick, buttonLabel }) {
-  return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      transition={{ duration: 0.18 }}
-      className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.24)] backdrop-blur-xl"
-    >
-      <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/55">
-        {highlight}
-      </div>
-
-      <h3 className="mt-4 text-xl font-semibold text-white">{title}</h3>
-      <p className="mt-3 text-sm leading-7 text-white/60">{desc}</p>
-
-      <button
-        onClick={onClick}
-        className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
-      >
-        {buttonLabel}
-      </button>
-    </motion.div>
-  );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-center backdrop-blur-xl">
-      <p className="text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-sm text-white/55">{label}</p>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.05),transparent_30%)]" />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
 
 function HighlightPill({ children }) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/58">
+    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-white/60 backdrop-blur-md">
       {children}
     </span>
   );
 }
 
-function AnalyticsMock() {
+function ModeCard({ title, desc, highlight, onClick, buttonLabel }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-white/50">Performance Overview</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">
-            Interview Progress
-          </h3>
+    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+      <Surface className="h-full p-6">
+        <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-white/58">
+          {highlight}
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/55">
+        <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
+        <p className="mt-3 text-sm leading-7 text-white/58">{desc}</p>
+
+        <button
+          onClick={onClick}
+          className="mt-6 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+        >
+          {buttonLabel}
+        </button>
+      </Surface>
+    </motion.div>
+  );
+}
+
+function MiniMetric({ value, label }) {
+  return (
+    <div>
+      <p className="text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-white/42">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function AnalyticsMock() {
+  return (
+    <Surface className="p-6 sm:p-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-white/42">
+            Performance Overview
+          </p>
+          <h3 className="mt-3 text-2xl font-semibold text-white">
+            Interview Progress
+          </h3>
+          <p className="mt-2 max-w-md text-sm leading-7 text-white/58">
+            Track score trends, identify stronger domains, and spot weak areas
+            before your actual interviews.
+          </p>
+        </div>
+
+        <div className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs text-white/58">
           Last 4 sessions
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <MiniStat label="Avg Score" value="8.1" />
-        <MiniStat label="Best Domain" value="Java" />
-        <MiniStat label="Attempts" value="12" />
+      <div className="mt-8 grid grid-cols-3 gap-6 border-t border-white/8 pt-8">
+        <MiniMetric value="8.1" label="Avg Score" />
+        <MiniMetric value="Java" label="Best Domain" />
+        <MiniMetric value="12" label="Attempts" />
       </div>
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="mt-8 rounded-[24px] border border-white/10 bg-black/20 p-5">
         <div className="flex items-end gap-3">
           {[52, 66, 58, 78, 72, 89].map((h, i) => (
             <div key={i} className="flex flex-1 flex-col items-center gap-2">
               <div
-                className="w-full rounded-t-xl bg-gradient-to-t from-violet-500/70 to-white/80"
+                className="w-full rounded-t-2xl bg-gradient-to-t from-violet-500/80 via-violet-300/70 to-white/90"
                 style={{ height: `${h * 1.4}px` }}
               />
-              <span className="text-[10px] text-white/40">S{i + 1}</span>
+              <span className="text-[10px] text-white/38">S{i + 1}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs text-white/45">Strong Areas</p>
-          <p className="mt-2 text-sm text-white/75">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-white/42">
+            Strong Areas
+          </p>
+          <p className="mt-3 text-sm leading-6 text-white/76">
             Java fundamentals, HR responses, speaking pace
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs text-white/45">Needs Improvement</p>
-          <p className="mt-2 text-sm text-white/75">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <p className="text-xs uppercase tracking-[0.14em] text-white/42">
+            Needs Improvement
+          </p>
+          <p className="mt-3 text-sm leading-6 text-white/76">
             DBMS depth, filler words, coding speed under time
           </p>
         </div>
       </div>
-    </div>
-  );
-}
-
-function HomeIntro({ done, setDone }) {
-  const [target, setTarget] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const played = sessionStorage.getItem("sia-home-intro-played");
-    if (played === "1") {
-      setDone(true);
-      return;
-    }
-
-    const t = setTimeout(() => {
-      const el = document.getElementById("navbar-brand-anchor");
-      if (!el) return;
-
-      const rect = el.getBoundingClientRect();
-      const targetCenterX = rect.left + 18;
-      const targetCenterY = rect.top + 18;
-
-      setTarget({
-        x: targetCenterX - window.innerWidth / 2,
-        y: targetCenterY - window.innerHeight / 2,
-      });
-    }, 60);
-
-    return () => clearTimeout(t);
-  }, [setDone]);
-
-  const handleComplete = () => {
-    sessionStorage.setItem("sia-home-intro-played", "1");
-    setDone(true);
-  };
-
-  if (done) return null;
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-[#040406]"
-      initial={{ opacity: 1 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        initial={{
-          x: 0,
-          y: 0,
-          scale: 3.2,
-          opacity: 1,
-        }}
-        animate={{
-          x: target.x,
-          y: target.y,
-          scale: 1,
-          opacity: 1,
-        }}
-        transition={{
-          duration: 1.15,
-          ease: [0.22, 1, 0.36, 1],
-          delay: 0.2,
-        }}
-        onAnimationComplete={handleComplete}
-        className="relative grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/[0.07]"
-      >
-        <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(139,92,246,0.16),transparent_45%)]" />
-        <span className="relative text-[11px] font-semibold tracking-[0.18em] text-white">
-          SIA
-        </span>
-      </motion.div>
-    </motion.div>
+    </Surface>
   );
 }
 
 export default function Home() {
   const nav = useNavigate();
-  const [introDone, setIntroDone] = useState(false);
 
   const contentAnim = useMemo(
     () => ({
       initial: { opacity: 0, y: 20 },
-      animate: {
-        opacity: introDone ? 1 : 0,
-        y: introDone ? 0 : 20,
-      },
-      transition: { duration: 0.55, ease: "easeOut", delay: introDone ? 0.08 : 0 },
+      whileInView: { opacity: 1, y: 0 },
+      viewport: { once: true, amount: 0.2 },
+      transition: { duration: 0.6 },
     }),
-    [introDone]
+    []
   );
 
   return (
-    <div className="relative min-h-[calc(100vh-69px)] overflow-hidden bg-[#040406] text-white">
-      <HomeIntro done={introDone} setDone={setIntroDone} />
+    <>
+      <ShaderLinesBackground />
+      <div className="fixed inset-0 z-[1] pointer-events-none bg-black/72" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_34%,rgba(109,40,217,0.24),transparent_22%),radial-gradient(circle_at_66%_52%,rgba(255,255,255,0.08),transparent_18%),linear-gradient(to_bottom,rgba(255,255,255,0.02),rgba(0,0,0,0))]" />
+      <div className="relative z-10 min-h-screen text-white">
+        <div className="mx-auto max-w-7xl px-6 pt-24 pb-16 sm:px-8 sm:pt-28">
+          <section className="relative overflow-hidden">
+            <div className="grid min-h-[calc(100vh-9rem)] items-center gap-10 lg:grid-cols-[0.92fr_1.08fr]">
+              <motion.div {...contentAnim} className="relative z-10 max-w-3xl">
+                <SectionLabel>AI interview workspace</SectionLabel>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
-        <section className="grid min-h-[72vh] items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-          <motion.div {...contentAnim} className="max-w-3xl">
-            <SectionLabel>AI interview workspace</SectionLabel>
+                <WordReveal
+                  text="Practice interviews with AI feedback"
+                  className="mt-6 font-display text-5xl font-semibold leading-[0.94] tracking-tight text-white sm:text-6xl lg:text-7xl"
+                />
 
-            <h1 className="mt-6 text-4xl font-semibold leading-[0.98] tracking-tight sm:text-6xl">
-              Practice interviews
-              <br />
-              with AI-powered
-              <br />
-              feedback
-            </h1>
+                <WordReveal
+                  text="Simulate interview rounds, review answer quality, and improve faster with structured feedback."
+                  delay={0.35}
+                  className="mt-6 max-w-2xl text-base leading-8 text-white/58 sm:text-lg"
+                />
 
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-white/68 sm:text-base">
-              Simulate interview rounds, get answer analysis, track your
-              progress, and build confidence before the real thing.
+                <motion.div
+                  {...contentAnim}
+                  transition={{ duration: 0.6, delay: 0.16 }}
+                  className="mt-8 flex flex-wrap gap-3"
+                >
+                  <button
+                    onClick={() => nav("/interview")}
+                    className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:scale-[1.03]"
+                  >
+                    Start Interview
+                  </button>
+
+                  <button
+                    onClick={() => nav("/dashboard")}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-medium text-white/92 transition hover:bg-white/[0.08]"
+                  >
+                    Open Dashboard
+                  </button>
+                </motion.div>
+
+                <motion.div
+                  {...contentAnim}
+                  transition={{ duration: 0.6, delay: 0.22 }}
+                  className="mt-10 flex flex-wrap gap-2"
+                >
+                  <HighlightPill>Domain Interviews</HighlightPill>
+                  <HighlightPill>Resume Questions</HighlightPill>
+                  <HighlightPill>Coding Practice</HighlightPill>
+                  <HighlightPill>Video Analysis</HighlightPill>
+                </motion.div>
+              </motion.div>
+
+              <motion.div
+                {...contentAnim}
+                transition={{ duration: 0.65, ease: "easeOut", delay: 0.1 }}
+                className="relative h-[380px] overflow-hidden sm:h-[500px] lg:h-[640px]"
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.018),transparent_64%)] blur-3xl" />
+                <div className="absolute inset-x-[-10%] bottom-[-4%] top-[-2%]">
+                  <SplineScene scene={SCENE_URL} className="h-full w-full" />
+                </div>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-black" />
+              </motion.div>
+            </div>
+
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent via-black/35 to-transparent" />
+          </section>
+
+          <motion.section {...contentAnim} className="relative z-10 mt-10">
+            <Surface className="p-6 sm:p-8 lg:p-10">
+              <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:gap-14">
+                <div className="max-w-3xl">
+                  <SectionLabel>Overview</SectionLabel>
+
+                  <h2 className="mt-5 font-display text-4xl font-semibold leading-[0.96] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                    One platform for realistic interview preparation
+                  </h2>
+
+                  <p className="mt-5 max-w-2xl text-sm leading-7 text-white/60 sm:text-base">
+                    Move from guided interview practice to analytics and
+                    targeted improvement without switching tools. Everything is
+                    designed to help you prepare in one focused workflow.
+                  </p>
+
+                  <div className="mt-8 flex flex-wrap gap-2">
+                    <HighlightPill>Mock interviews</HighlightPill>
+                    <HighlightPill>Resume-based questions</HighlightPill>
+                    <HighlightPill>Coding workspace</HighlightPill>
+                    <HighlightPill>Progress insights</HighlightPill>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+                      Practice
+                    </p>
+                    <h3 className="mt-3 text-lg font-semibold text-white">
+                      Mock interviews across multiple domains
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-white/58">
+                      Practice technical and non-technical rounds with a
+                      cleaner, more structured interview flow.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+                      Personalization
+                    </p>
+                    <h3 className="mt-3 text-lg font-semibold text-white">
+                      Resume-based personalized questions
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-white/58">
+                      Generate tailored questions from your skills, projects,
+                      internships, and technical background.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+                      Coding
+                    </p>
+                    <h3 className="mt-3 text-lg font-semibold text-white">
+                      Coding rounds with focused workspace
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-white/58">
+                      Solve problems in an IDE-style setup built for interview
+                      preparation and timed execution.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+                      Improvement
+                    </p>
+                    <h3 className="mt-3 text-lg font-semibold text-white">
+                      Progress insights that guide improvement
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-white/58">
+                      Identify patterns, weaker topics, and communication gaps
+                      across repeated sessions.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Surface>
+          </motion.section>
+
+          <ContainerScrollAnimation
+            titleComponent={
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-white/45">
+                  Platform walkthrough
+                </p>
+                <h2 className="mt-4 font-display text-4xl font-semibold text-white sm:text-5xl md:text-6xl">
+                  Experience the flow
+                </h2>
+                <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/58 sm:text-base">
+                  Move from interview setup to analysis and insights in one
+                  seamless workspace.
+                </p>
+              </div>
+            }
+          >
+            <div className="relative h-full w-full overflow-hidden rounded-[22px]">
+              <video
+                src="/videos/main-flow.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/38" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
+              <div className="absolute left-6 top-6 rounded-2xl border border-white/10 bg-black/35 px-4 py-3 backdrop-blur-xl">
+                <p className="text-xs uppercase tracking-[0.18em] text-white/45">
+                  Main Journey
+                </p>
+                <p className="mt-1 text-sm text-white/90">
+                  Interview setup to AI feedback
+                </p>
+              </div>
+            </div>
+          </ContainerScrollAnimation>
+
+          <section className="mt-24 text-center">
+            <p className="text-sm uppercase tracking-[0.24em] text-white/45">
+              Explore more
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                onClick={() => nav("/interview")}
-                className="rounded-xl bg-white px-6 py-3 text-sm font-medium text-black transition hover:scale-[1.03]"
-              >
-                Start Interview
-              </button>
+            <h2 className="mt-4 font-display text-4xl font-semibold text-white sm:text-5xl">
+              Dive into every mode
+            </h2>
 
-              <button
-                onClick={() => nav("/dashboard")}
-                className="rounded-xl border border-white/10 bg-white/[0.06] px-6 py-3 text-sm text-white/90 backdrop-blur-xl transition hover:bg-white/[0.1]"
-              >
-                Open Dashboard
-              </button>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/58 sm:text-base">
+              Click any mode to explore the experience.
+            </p>
+
+            <div className="mt-12">
+              <OrbitModes items={orbitItems} />
             </div>
+          </section>
+        </div>
 
-            <div className="mt-8 flex flex-wrap gap-2 text-xs text-white/48">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                Domain Interview
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                Resume Interview
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                Coding Practice
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                Video Analysis
-              </span>
-            </div>
-          </motion.div>
-
-          <motion.div
+        <div className="mx-auto max-w-7xl px-6 pb-10 sm:px-8">
+          <motion.section
             {...contentAnim}
-            transition={{ duration: 0.6, ease: "easeOut", delay: introDone ? 0.16 : 0 }}
-            className="relative h-[360px] sm:h-[480px] lg:h-[640px]"
+            className="mt-8 grid items-center gap-12 lg:grid-cols-[0.88fr_1.12fr]"
           >
-            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.22),rgba(124,58,237,0.08)_34%,transparent_66%)] blur-3xl" />
-            <div className="absolute inset-0">
-              <SplineScene scene={SCENE_URL} className="h-full w-full" />
+            <div>
+              <SectionTitle
+                eyebrow="Progress tracking"
+                title="Understand where you are improving"
+                desc="Preparation becomes more effective when you can clearly see trends, strong areas, and weaknesses."
+              />
+
+              <div className="mt-8 space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white">
+                    Track scores over time
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-white/58">
+                    Review how your interview scores evolve across repeated
+                    sessions.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium text-white">
+                    Find weak domains faster
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-white/58">
+                    Identify topics and formats where you need more confidence
+                    or stronger depth.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium text-white">
+                    Improve communication
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-white/58">
+                    Use pacing, filler usage, and response quality signals to
+                    improve delivery.
+                  </p>
+                </div>
+              </div>
             </div>
-          </motion.div>
-        </section>
 
-        <motion.section {...contentAnim} className="mt-8">
-          <SectionTitle
-            eyebrow="What this platform does"
-            title="Everything you need to practice smarter"
-            desc="Go beyond plain question-and-answer preparation with structured interview modes, analysis, and performance tracking."
-          />
+            <AnalyticsMock />
+          </motion.section>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <FeatureCard
-              title="Mock Interview Practice"
-              desc="Take structured interview rounds across multiple domains with a smoother question flow."
-            />
-            <FeatureCard
-              title="Resume-Based Questions"
-              desc="Upload your resume and get personalized questions based on your skills, projects, and profile."
-            />
-            <FeatureCard
-              title="Coding Interview Workspace"
-              desc="Solve timed coding problems in an IDE-style interface with cleaner problem statements and results."
-            />
-            <FeatureCard
-              title="Insights & Analytics"
-              desc="Track trends, identify weak spots, and review how your performance improves over time."
-            />
-          </div>
-        </motion.section>
-
-        <motion.section {...contentAnim} className="mt-20">
-          <SectionTitle
-            eyebrow="How it works"
-            title="A simple interview preparation flow"
-            desc="Start quickly, practice consistently, and use feedback to improve with each session."
-            center
-          />
-
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StepCard
-              number="1"
-              title="Choose a mode"
-              desc="Pick domain interview, resume interview, or coding interview based on what you want to practice."
-            />
-            <StepCard
-              number="2"
-              title="Answer confidently"
-              desc="Respond using text, audio, or video depending on the interview format you want to simulate."
-            />
-            <StepCard
-              number="3"
-              title="Get evaluated"
-              desc="Receive scoring, communication analysis, and detailed feedback after each round."
-            />
-            <StepCard
-              number="4"
-              title="Improve and retry"
-              desc="Use insights and analytics to target weak areas and prepare better for the next attempt."
-            />
-          </div>
-        </motion.section>
-
-        <motion.section {...contentAnim} className="mt-20">
-          <SectionTitle
-            eyebrow="Interview modes"
-            title="Practice in the way that suits you best"
-            desc="Each interview mode is designed for a different preparation need, from communication and core theory to personalized and coding-focused rounds."
-          />
-
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            <ModeCard
-              title="Domain Interview"
-              highlight="Adaptive practice"
-              desc="Practice domain-specific questions such as HR, Java, DBMS, and AI with a guided interview flow that feels close to a real round."
-              buttonLabel="Try Domain Interview"
-              onClick={() => nav("/interview/domain")}
-            />
-            <ModeCard
-              title="Resume Interview"
-              highlight="Personalized questions"
-              desc="Upload your resume and generate questions based on your projects, skills, experience, and profile details."
-              buttonLabel="Try Resume Interview"
-              onClick={() => nav("/interview/resume")}
-            />
-            <ModeCard
-              title="Coding Interview"
-              highlight="Timed coding rounds"
-              desc="Work through coding problems in a cleaner IDE-style workspace with language selection, sample cases, and result feedback."
-              buttonLabel="Try Coding Interview"
-              onClick={() => nav("/interview/coding")}
-            />
-          </div>
-        </motion.section>
-
-        <motion.section {...contentAnim} className="mt-20">
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl">
-            <div className="flex flex-wrap gap-3">
-              <HighlightPill>Adaptive question flow</HighlightPill>
-              <HighlightPill>Audio answer support</HighlightPill>
-              <HighlightPill>Video interview mode</HighlightPill>
-              <HighlightPill>Communication analysis</HighlightPill>
-              <HighlightPill>Timed coding rounds</HighlightPill>
-              <HighlightPill>Resume parsing</HighlightPill>
-              <HighlightPill>Insights dashboard</HighlightPill>
-              <HighlightPill>Performance analytics</HighlightPill>
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section {...contentAnim} className="mt-20 grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-          <div>
+          <motion.section {...contentAnim} className="mt-28">
             <SectionTitle
-              eyebrow="Progress tracking"
-              title="Understand where you are improving"
-              desc="Preparation becomes much more effective when you can see trends, spot weaknesses, and focus on what matters most."
-            />
-
-            <div className="mt-8 grid gap-3">
-              <FeatureCard
-                title="Track scores over time"
-                desc="Review how your interview scores evolve across repeated practice sessions."
-              />
-              <FeatureCard
-                title="Find weak domains faster"
-                desc="Identify topics and formats where you need more confidence or stronger depth."
-              />
-              <FeatureCard
-                title="Improve communication"
-                desc="Use speaking pace, filler usage, and response quality as signals for better interview delivery."
-              />
-            </div>
-          </div>
-
-          <AnalyticsMock />
-        </motion.section>
-
-        <motion.section {...contentAnim} className="mt-20">
-          <SectionTitle
-            eyebrow="Why use Smart Interview Analyzer"
-            title="Built to help students prepare with more confidence"
-            desc="The platform combines multiple interview styles in one place so you can practice more realistically and improve with purpose."
-            center
-          />
-
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <FeatureCard
-              title="Prepare before real interviews"
-              desc="Reduce uncertainty by practicing structured rounds ahead of actual placement and job interviews."
-            />
-            <FeatureCard
-              title="Build communication confidence"
-              desc="Get comfortable explaining your thoughts clearly, not just knowing the answer."
-            />
-            <FeatureCard
-              title="Improve technical depth"
-              desc="Strengthen both conceptual domains and coding performance through repeated practice."
-            />
-            <FeatureCard
-              title="Use one platform for everything"
-              desc="Move from resume questions to domain rounds to coding practice without switching tools."
-            />
-          </div>
-        </motion.section>
-
-        <motion.section {...contentAnim} className="mt-20 pb-8">
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.04] px-6 py-10 text-center shadow-[0_18px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl sm:px-10">
-            <SectionTitle
-              title="Ready to start your interview preparation?"
-              desc="Practice smarter, track your growth, and walk into your next interview with more confidence."
+              eyebrow="Interview modes"
+              title="Practice in the format that fits your goal"
+              desc="Each mode is built for a different preparation need."
               center
             />
 
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <button
-                onClick={() => nav("/interview")}
-                className="rounded-xl bg-white px-6 py-3 text-sm font-medium text-black transition hover:scale-[1.03]"
-              >
-                Start Now
-              </button>
-
-              <button
-                onClick={() => nav("/dashboard")}
-                className="rounded-xl border border-white/10 bg-white/[0.06] px-6 py-3 text-sm text-white/90 transition hover:bg-white/[0.1]"
-              >
-                Go to Dashboard
-              </button>
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              <ModeCard
+                title="Domain Interview"
+                highlight="Adaptive practice"
+                desc="Practice core subjects such as HR, Java, DBMS, and AI in a guided interview flow."
+                buttonLabel="Start Domain"
+                onClick={() => nav("/interview/domain")}
+              />
+              <ModeCard
+                title="Resume Interview"
+                highlight="Personalized questions"
+                desc="Generate tailored questions from your resume, skills, and project experience."
+                buttonLabel="Start Resume"
+                onClick={() => nav("/interview/resume")}
+              />
+              <ModeCard
+                title="Coding Interview"
+                highlight="Timed coding rounds"
+                desc="Solve interview-style programming problems in a focused coding environment."
+                buttonLabel="Start Coding"
+                onClick={() => nav("/interview/coding")}
+              />
             </div>
-          </div>
-        </motion.section>
+          </motion.section>
+
+          <motion.section {...contentAnim} className="mt-28 pb-10">
+            <Surface className="px-6 py-12 text-center sm:px-10">
+              <SectionTitle
+                title="Ready to prepare with more confidence?"
+                desc="Practice smarter, track your growth, and walk into your next interview better prepared."
+                center
+              />
+
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <button
+                  onClick={() => nav("/interview")}
+                  className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:scale-[1.03]"
+                >
+                  Start Now
+                </button>
+
+                <button
+                  onClick={() => nav("/dashboard")}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-medium text-white/90 transition hover:bg-white/[0.08]"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            </Surface>
+          </motion.section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

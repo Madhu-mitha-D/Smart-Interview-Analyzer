@@ -50,42 +50,62 @@ function PrimaryButton({ children, className = "", disabled, ...props }) {
   );
 }
 
-function Surface({ children, className = "" }) {
+function PremiumSurface({ children, className = "" }) {
+  const [glow, setGlow] = useState({ x: 50, y: 50, active: false });
+
   return (
     <motion.div
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -3 }}
       transition={{ duration: 0.18 }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        setGlow({ x, y, active: true });
+      }}
+      onMouseLeave={() => setGlow((g) => ({ ...g, active: false }))}
       className={[
-        "rounded-2xl border border-white/10 bg-[#141416]/55 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.28)]",
+        "group relative overflow-hidden rounded-[26px] border border-white/10 bg-[#101013]/72 shadow-[0_18px_60px_rgba(0,0,0,0.34)] backdrop-blur-2xl",
         className,
       ].join(" ")}
     >
-      {children}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.015))]" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100"
+        style={{
+          background: glow.active
+            ? `radial-gradient(480px circle at ${glow.x}% ${glow.y}%, rgba(255,255,255,0.08), transparent 38%)`
+            : "none",
+        }}
+      />
+      <div className="relative z-10">{children}</div>
     </motion.div>
   );
 }
 
-function StatCard({ label, value, sub, accent = "white" }) {
-  const accentClass =
+function StatCard({ label, value, sub, accent = "violet" }) {
+  const accentGlow =
     accent === "violet"
-      ? "from-violet-400/30 to-transparent"
+      ? "from-violet-400/30"
       : accent === "blue"
-      ? "from-sky-400/30 to-transparent"
+      ? "from-sky-400/30"
       : accent === "emerald"
-      ? "from-emerald-400/30 to-transparent"
-      : "from-white/20 to-transparent";
+      ? "from-emerald-400/30"
+      : "from-white/20";
 
   return (
-    <Surface className="relative overflow-hidden p-4">
-      <div
-        className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r ${accentClass}`}
-      />
-      <p className="text-xs text-white/45">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
-        {value}
+    <PremiumSurface className="p-5">
+      <div className={`absolute -top-12 right-0 h-28 w-28 rounded-full bg-gradient-to-b ${accentGlow} to-transparent blur-3xl`} />
+      <p className="text-[11px] uppercase tracking-[0.16em] text-white/42">
+        {label}
       </p>
-      {sub ? <p className="mt-1 text-xs text-white/35">{sub}</p> : null}
-    </Surface>
+      <div className="mt-4 flex items-end justify-between gap-4">
+        <p className="text-3xl font-semibold tracking-tight text-white">{value}</p>
+        <div className="h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.04]" />
+      </div>
+      {sub ? <p className="mt-2 text-xs text-white/40">{sub}</p> : null}
+    </PremiumSurface>
   );
 }
 
@@ -95,7 +115,7 @@ function ProgressBar({ value, max = 100 }) {
   return (
     <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
       <div
-        className="h-full rounded-full bg-gradient-to-r from-violet-300/80 to-sky-300/80 transition-all"
+        className="h-full rounded-full bg-gradient-to-r from-violet-300/80 via-fuchsia-300/80 to-sky-300/80 transition-all"
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -189,6 +209,99 @@ function TrendChart({ values }) {
   );
 }
 
+function SectionHeading({ eyebrow, title, desc }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/38">
+        {eyebrow}
+      </p>
+      <h2 className="text-2xl font-semibold tracking-tight text-white">{title}</h2>
+      {desc ? <p className="text-sm text-white/50">{desc}</p> : null}
+    </div>
+  );
+}
+
+function SessionCard({ s, idx, nav, deletingId, openDelete }) {
+  const sid = s.session_id;
+  const isDone = !!s.is_completed;
+
+  return (
+    <PremiumSurface className="p-5">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, delay: idx * 0.03 }}
+        className="flex flex-wrap items-center justify-between gap-5"
+      >
+        <div className="min-w-[250px] flex-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-base font-semibold uppercase tracking-wide text-white">
+              {s.domain}
+            </span>
+            <span className="text-white/20">•</span>
+            <span className="text-sm text-white/60">{s.difficulty}</span>
+            <StatusPill done={isDone} />
+          </div>
+
+          <p className="mt-3 break-all text-sm text-white/42">
+            Session: <span className="text-white/75">{sid}</span>
+          </p>
+
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-white/52">
+            <span>
+              Score: <span className="text-white">{s.total_score ?? 0}</span>
+            </span>
+            {s.verdict ? (
+              <span>
+                Verdict: <span className="text-white">{s.verdict}</span>
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link
+            to={`/insights?session_id=${encodeURIComponent(sid)}`}
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            Insights
+          </Link>
+
+          <Link
+            to={`/analytics?session_id=${encodeURIComponent(sid)}`}
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            Analytics
+          </Link>
+
+          <PrimaryButton
+            onClick={() =>
+              nav(`/interview?session_id=${encodeURIComponent(sid)}`)
+            }
+            disabled={isDone}
+            title={
+              isDone
+                ? "Completed sessions can’t be continued."
+                : "Continue interview"
+            }
+          >
+            Continue
+          </PrimaryButton>
+
+          <button
+            type="button"
+            onClick={() => openDelete(s)}
+            disabled={deletingId === sid}
+            className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition hover:bg-red-500/20 disabled:opacity-60"
+          >
+            {deletingId === sid ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </motion.div>
+    </PremiumSurface>
+  );
+}
+
 export default function Dashboard() {
   const nav = useNavigate();
 
@@ -218,8 +331,7 @@ export default function Dashboard() {
         setLoadingMe(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [nav]);
 
   const loadSessions = async () => {
     setMsg("");
@@ -238,7 +350,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const orderedSessions = useMemo(() => [...(sessions || [])], [sessions]);
@@ -267,7 +378,6 @@ export default function Dashboard() {
 
   const recommendedDomain = useMemo(() => {
     const completed = orderedSessions.filter((s) => s.is_completed);
-
     if (completed.length === 0) return "hr";
 
     const domainScores = {};
@@ -293,7 +403,6 @@ export default function Dashboard() {
 
   const domainSummary = useMemo(() => {
     const map = {};
-
     orderedSessions.forEach((s) => {
       const domain = String(s.domain || "general").toUpperCase();
       if (!map[domain]) map[domain] = { count: 0, score: 0 };
@@ -363,7 +472,7 @@ export default function Dashboard() {
   const deleteModal = deleteTarget
     ? createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-6">
-          <div className="absolute inset-0 bg-black/70" onClick={closeDelete} />
+          <div className="absolute inset-0 bg-black/72" onClick={closeDelete} />
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -418,31 +527,107 @@ export default function Dashboard() {
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
-        <div className="space-y-2 pt-2">
-          <p className="text-sm text-white/40">
-            {loadingMe ? "Loading profile..." : `Signed in as ${me?.email || "—"}`}
-          </p>
-          <h1 className="text-4xl font-semibold tracking-tight text-white">
-            Welcome back{me?.full_name ? `, ${me.full_name}` : ""}.
-          </h1>
-          <p className="max-w-2xl text-sm leading-6 text-white/55">
-            Practice interviews, review performance, and keep improving with a calmer,
-            clearer view of your progress.
-          </p>
+        <PremiumSurface className="overflow-hidden p-6 sm:p-8">
+          <div className="absolute -left-10 top-0 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-sky-400/10 blur-3xl" />
+
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="space-y-3">
+              <p className="text-sm text-white/40">
+                {loadingMe ? "Loading profile..." : `Signed in as ${me?.email || "—"}`}
+              </p>
+
+              <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                Welcome back{me?.full_name ? `, ${me.full_name}` : ""}.
+              </h1>
+
+              <p className="max-w-2xl text-sm leading-7 text-white/55 sm:text-base">
+                Practice interviews, review performance, and keep improving with
+                a calmer, clearer view of your progress.
+              </p>
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <PrimaryButton onClick={() => nav("/interview")}>
+                  Start Interview
+                </PrimaryButton>
+                <GhostButton onClick={() => nav("/analytics")}>
+                  Open Analytics
+                </GhostButton>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/38">
+                  Next Focus
+                </p>
+                <p className="mt-3 text-lg font-semibold text-white">
+                  {String(recommendedDomain || "hr").toUpperCase()}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/55">
+                  {coachMessage}
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/38">
+                  Live Status
+                </p>
+                <p className="mt-3 text-lg font-semibold text-white">
+                  {latestActive ? "Session in progress" : "No active session"}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/55">
+                  {latestActive
+                    ? `${String(latestActive.domain || "").toUpperCase()} • ${latestActive.difficulty}`
+                    : "Start a fresh round whenever you’re ready."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </PremiumSurface>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Total Sessions"
+            value={stats.total}
+            sub="All interview sessions"
+            accent="violet"
+          />
+          <StatCard
+            label="Completed"
+            value={stats.completed}
+            sub="Finished sessions"
+            accent="emerald"
+          />
+          <StatCard
+            label="In Progress"
+            value={stats.active}
+            sub="Resume anytime"
+            accent="blue"
+          />
+          <StatCard
+            label="Average Score"
+            value={stats.avgScore}
+            sub="Across all sessions"
+            accent="white"
+          />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Next action
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              {latestActive ? "Continue your interview" : "Start a new interview"}
-            </h2>
+        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <PremiumSurface className="p-6">
+            <SectionHeading
+              eyebrow="Next action"
+              title={latestActive ? "Continue your interview" : "Start a new interview"}
+              desc={
+                latestActive
+                  ? "Pick up where you left off and keep the momentum going."
+                  : "No unfinished session right now. Start a fresh round and keep your practice streak alive."
+              }
+            />
 
             {latestActive ? (
               <>
-                <div className="mt-4 flex items-center gap-3">
+                <div className="mt-5 flex items-center gap-3">
                   <StatusPill done={false} />
                   <span className="text-sm text-white/55">
                     {String(latestActive.domain || "").toUpperCase()} •{" "}
@@ -478,89 +663,23 @@ export default function Dashboard() {
                 </div>
               </>
             ) : (
-              <>
-                <p className="mt-4 text-sm text-white/58">
-                  No unfinished session right now. Start a fresh round and keep your practice streak going.
-                </p>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <PrimaryButton onClick={() => nav("/interview")}>
-                    Start Interview
-                  </PrimaryButton>
-                  <GhostButton onClick={() => nav("/analytics")}>
-                    View Analytics
-                  </GhostButton>
-                </div>
-              </>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <PrimaryButton onClick={() => nav("/interview")}>
+                  Start Interview
+                </PrimaryButton>
+                <GhostButton onClick={() => nav("/profile")}>
+                  View Profile
+                </GhostButton>
+              </div>
             )}
-          </Surface>
+          </PremiumSurface>
 
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Recommendation
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              Focus next on {String(recommendedDomain || "hr").toUpperCase()}
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-white/58">{coachMessage}</p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <PrimaryButton onClick={() => nav("/interview")}>
-                Practice Now
-              </PrimaryButton>
-              <GhostButton onClick={() => nav("/profile")}>View Profile</GhostButton>
-            </div>
-          </Surface>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Total Sessions"
-            value={stats.total}
-            sub="All interview sessions"
-            accent="violet"
-          />
-          <StatCard
-            label="Completed"
-            value={stats.completed}
-            sub="Finished sessions"
-            accent="emerald"
-          />
-          <StatCard
-            label="In Progress"
-            value={stats.active}
-            sub="Resume anytime"
-            accent="blue"
-          />
-          <StatCard
-            label="Average Score"
-            value={stats.avgScore}
-            sub="Across all sessions"
-            accent="white"
-          />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Score trend
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              Recent performance
-            </h2>
-            <p className="mt-2 text-sm text-white/50">
-              A quick view of your latest completed interview scores.
-            </p>
-            <TrendChart values={trendValues} />
-          </Surface>
-
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Domain strength
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              Practice distribution
-            </h2>
+          <PremiumSurface className="p-6">
+            <SectionHeading
+              eyebrow="Domain strength"
+              title="Practice distribution"
+              desc="A quick view of how much attention each domain has received so far."
+            />
 
             <div className="mt-5 space-y-4">
               {domainSummary.length === 0 ? (
@@ -588,7 +707,48 @@ export default function Dashboard() {
                 ))
               )}
             </div>
-          </Surface>
+          </PremiumSurface>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <PremiumSurface className="p-6">
+            <SectionHeading
+              eyebrow="Score trend"
+              title="Recent performance"
+              desc="A quick view of your latest completed interview scores."
+            />
+            <TrendChart values={trendValues} />
+          </PremiumSurface>
+
+          <PremiumSurface className="p-6">
+            <SectionHeading
+              eyebrow="Session summary"
+              title="Current dashboard state"
+              desc="A compact look at how your interview preparation is progressing."
+            />
+
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-white/38">
+                  Completion Rate
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-white">
+                  {stats.total
+                    ? `${Math.round((stats.completed / stats.total) * 100)}%`
+                    : "0%"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-white/38">
+                  Recommendation
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/60">
+                  {coachMessage}
+                </p>
+              </div>
+            </div>
+          </PremiumSurface>
         </div>
 
         <div className="flex items-end justify-between gap-4">
@@ -610,9 +770,11 @@ export default function Dashboard() {
 
         <div className="space-y-3">
           {loadingSessions ? (
-            <Surface className="p-6 text-white/65">Loading sessions...</Surface>
+            <PremiumSurface className="p-6 text-white/65">
+              Loading sessions...
+            </PremiumSurface>
           ) : orderedSessions.length === 0 ? (
-            <Surface className="p-8 text-center">
+            <PremiumSurface className="p-8 text-center">
               <p className="text-lg text-white/85">No sessions yet</p>
               <p className="mt-2 text-white/55">
                 Start your first interview and your activity will appear here.
@@ -622,92 +784,20 @@ export default function Dashboard() {
                   Start Interview
                 </PrimaryButton>
               </div>
-            </Surface>
+            </PremiumSurface>
           ) : (
-            orderedSessions.slice(0, 6).map((s, idx) => {
-              const sid = s.session_id;
-              const isDone = !!s.is_completed;
-
-              return (
-                <Surface key={sid} className="p-5">
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: idx * 0.03 }}
-                    className="flex flex-wrap items-center justify-between gap-5"
-                  >
-                    <div className="min-w-[250px] flex-1">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-base font-semibold uppercase tracking-wide text-white">
-                          {s.domain}
-                        </span>
-                        <span className="text-white/20">•</span>
-                        <span className="text-sm text-white/60">
-                          {s.difficulty}
-                        </span>
-                        <StatusPill done={isDone} />
-                      </div>
-
-                      <p className="mt-3 break-all text-sm text-white/42">
-                        Session: <span className="text-white/75">{sid}</span>
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-white/52">
-                        <span>
-                          Score:{" "}
-                          <span className="text-white">{s.total_score ?? 0}</span>
-                        </span>
-
-                        {s.verdict ? (
-                          <span>
-                            Verdict: <span className="text-white">{s.verdict}</span>
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Link
-                        to={`/insights?session_id=${encodeURIComponent(sid)}`}
-                        className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-                      >
-                        Insights
-                      </Link>
-
-                      <Link
-                        to={`/analytics?session_id=${encodeURIComponent(sid)}`}
-                        className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-                      >
-                        Analytics
-                      </Link>
-
-                      <PrimaryButton
-                        onClick={() =>
-                          nav(`/interview?session_id=${encodeURIComponent(sid)}`)
-                        }
-                        disabled={isDone}
-                        title={
-                          isDone
-                            ? "Completed sessions can’t be continued."
-                            : "Continue interview"
-                        }
-                      >
-                        Continue
-                      </PrimaryButton>
-
-                      <button
-                        type="button"
-                        onClick={() => openDelete(s)}
-                        disabled={deletingId === sid}
-                        className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition hover:bg-red-500/20 disabled:opacity-60"
-                      >
-                        {deletingId === sid ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </motion.div>
-                </Surface>
-              );
-            })
+            orderedSessions
+              .slice(0, 6)
+              .map((s, idx) => (
+                <SessionCard
+                  key={s.session_id}
+                  s={s}
+                  idx={idx}
+                  nav={nav}
+                  deletingId={deletingId}
+                  openDelete={openDelete}
+                />
+              ))
           )}
         </div>
       </motion.div>

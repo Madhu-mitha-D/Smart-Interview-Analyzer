@@ -4,13 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 function HomeIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[18px] w-[18px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
       <path d="M3 10.5 12 3l9 7.5" />
       <path d="M5 9.5V21h14V9.5" />
       <path d="M9 21v-6h6v6" />
@@ -20,13 +14,7 @@ function HomeIcon() {
 
 function DashboardIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[18px] w-[18px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="4" rx="1.5" />
       <rect x="14" y="10" width="7" height="11" rx="1.5" />
@@ -37,13 +25,7 @@ function DashboardIcon() {
 
 function InterviewIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[18px] w-[18px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
       <rect x="9" y="3" width="6" height="11" rx="3" />
       <path d="M5 10a7 7 0 0 0 14 0" />
       <path d="M12 17v4" />
@@ -54,13 +36,7 @@ function InterviewIcon() {
 
 function InsightsIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[18px] w-[18px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
       <path d="M9 18h6" />
       <path d="M10 22h4" />
       <path d="M8.5 14.5C7 13.4 6 11.6 6 9.5A6 6 0 0 1 18 9.5c0 2.1-1 3.9-2.5 5" />
@@ -71,13 +47,7 @@ function InsightsIcon() {
 
 function AnalyticsIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[18px] w-[18px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
       <path d="M4 20V10" />
       <path d="M10 20V4" />
       <path d="M16 20v-7" />
@@ -88,13 +58,7 @@ function AnalyticsIcon() {
 
 function ProfileIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[18px] w-[18px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20a8 8 0 0 1 16 0" />
     </svg>
@@ -103,13 +67,7 @@ function ProfileIcon() {
 
 function LogoutIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      className="h-[16px] w-[16px]"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[16px] w-[16px]">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
@@ -124,16 +82,16 @@ function NavIconPill({ to, label, icon, active, hovered, onHover, onLeave }) {
     <Link to={to} onMouseEnter={onHover} onMouseLeave={onLeave}>
       <motion.div
         initial={false}
-        animate={{ width: expanded ? 138 : 48 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
+        animate={{ width: expanded ? 138 : 44 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
         className={[
-          "flex h-11 items-center overflow-hidden rounded-2xl border px-3",
+          "flex h-10 items-center overflow-hidden rounded-full border px-3",
           active
-            ? "border-white/20 bg-white/10 text-white"
-            : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
+            ? "border-white/15 bg-white/[0.08] text-white"
+            : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06] hover:text-white",
         ].join(" ")}
       >
-        <div className="flex min-w-[20px] items-center justify-center">{icon}</div>
+        <div className="flex min-w-[18px] items-center justify-center">{icon}</div>
 
         <AnimatePresence initial={false}>
           {expanded ? (
@@ -142,8 +100,8 @@ function NavIconPill({ to, label, icon, active, hovered, onHover, onLeave }) {
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -6 }}
-              transition={{ duration: 0.14 }}
-              className="ml-3 whitespace-nowrap text-sm font-medium"
+              transition={{ duration: 0.12 }}
+              className="ml-3 whitespace-nowrap text-sm"
             >
               {label}
             </motion.span>
@@ -200,31 +158,22 @@ export default function Navbar({ title = "Home" }) {
   return (
     <motion.div
       initial={{ y: 0, opacity: 1 }}
-      animate={{
-        y: showNav ? 0 : -110,
-        opacity: showNav ? 1 : 0,
-      }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
+      animate={{ y: showNav ? 0 : -100, opacity: showNav ? 1 : 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className="sticky top-0 z-50"
     >
-      <div className="border-b border-white/10 bg-black/40 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div
-            id="navbar-brand-anchor"
-            className="flex min-w-0 items-center gap-3"
-          >
-            <div className="relative grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/[0.07]">
-              <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.12),transparent_45%),radial-gradient(circle_at_70%_70%,rgba(139,92,246,0.16),transparent_45%)]" />
-              <span className="relative text-[11px] font-semibold tracking-[0.18em] text-white">
+      <div className="border-b border-white/8 bg-black/20 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div id="navbar-brand-anchor" className="flex min-w-0 items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/[0.05]">
+              <span className="text-[11px] font-semibold tracking-[0.18em] text-white">
                 SIA
               </span>
             </div>
 
             <div className="min-w-0">
-              <p className="text-sm font-semibold tracking-tight text-white">
-                Smart Interview Analyzer
-              </p>
-              <p className="truncate text-xs text-white/45">{title}</p>
+              <p className="text-sm font-medium text-white">Smart Interview Analyzer</p>
+              <p className="truncate text-xs text-white/38">{title}</p>
             </div>
           </div>
 
@@ -240,7 +189,6 @@ export default function Navbar({ title = "Home" }) {
                   onHover={() => setHoveredItem("home")}
                   onLeave={() => setHoveredItem("")}
                 />
-
                 <NavIconPill
                   to="/dashboard"
                   label="Dashboard"
@@ -250,7 +198,6 @@ export default function Navbar({ title = "Home" }) {
                   onHover={() => setHoveredItem("dashboard")}
                   onLeave={() => setHoveredItem("")}
                 />
-
                 <NavIconPill
                   to="/interview"
                   label="Interview"
@@ -260,7 +207,6 @@ export default function Navbar({ title = "Home" }) {
                   onHover={() => setHoveredItem("interview")}
                   onLeave={() => setHoveredItem("")}
                 />
-
                 <NavIconPill
                   to="/insights"
                   label="Insights"
@@ -270,7 +216,6 @@ export default function Navbar({ title = "Home" }) {
                   onHover={() => setHoveredItem("insights")}
                   onLeave={() => setHoveredItem("")}
                 />
-
                 <NavIconPill
                   to="/analytics"
                   label="Analytics"
@@ -280,7 +225,6 @@ export default function Navbar({ title = "Home" }) {
                   onHover={() => setHoveredItem("analytics")}
                   onLeave={() => setHoveredItem("")}
                 />
-
                 <NavIconPill
                   to="/profile"
                   label="Profile"
@@ -294,7 +238,7 @@ export default function Navbar({ title = "Home" }) {
 
               <button
                 onClick={logout}
-                className="flex h-11 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/75 transition hover:bg-white/[0.06] hover:text-white"
               >
                 <LogoutIcon />
                 <span className="hidden sm:inline">Logout</span>
@@ -304,13 +248,13 @@ export default function Navbar({ title = "Home" }) {
             <div className="flex items-center gap-2">
               <Link
                 to="/login"
-                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
+                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06]"
               >
                 Login
               </Link>
               <Link
                 to="/register"
-                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-black transition-all duration-200 hover:scale-[1.03]"
+                className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:scale-[1.03]"
               >
                 Register
               </Link>
