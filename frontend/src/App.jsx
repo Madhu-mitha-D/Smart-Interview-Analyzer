@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import IntroAnimation from "./components/ui/IntroAnimation";
 import Layout from "./components/Layout";
 
 import Home from "./pages/Home";
@@ -14,38 +16,53 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 
 export default function App() {
+  const [introComplete, setIntroComplete] = useState(false);
+
   return (
-    <BrowserRouter>
-      <Routes>
+    <>
+      <IntroAnimation onComplete={() => setIntroComplete(true)} />
 
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+      <div
+        style={{
+          opacity: introComplete ? 1 : 0,
+          transition: "opacity 0.5s ease-in-out",
+        }}
+      >
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-        {/* App routes */}
-        <Route element={<Layout />}>
+            {/* App routes */}
+            <Route element={<Layout />}>
+              {/* Landing page AFTER login */}
+              <Route index element={<Home />} />
+              <Route path="/" element={<Home />} />
 
-          {/* Landing page AFTER login */}
-          <Route index element={<Home />} />
-          <Route path="/" element={<Home />} />
+              {/* Main sections */}
+              <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Main sections */}
-          <Route path="/dashboard" element={<Dashboard />} />
+              {/* Interview section */}
+              <Route path="/interview" element={<Interview />} />
+              <Route path="/interview/domain" element={<DomainInterview />} />
+              <Route
+                path="/interview/resume"
+                element={<ResumeInterviewPage />}
+              />
+              <Route
+                path="/interview/coding"
+                element={<CodingInterviewPage />}
+              />
 
-          {/* Interview section */}
-          <Route path="/interview" element={<Interview />} />
-          <Route path="/interview/domain" element={<DomainInterview />} />
-          <Route path="/interview/resume" element={<ResumeInterviewPage />} />
-          <Route path="/interview/coding" element={<CodingInterviewPage />} />
-
-          {/* Results & profile */}
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/profile" element={<Profile />} />
-
-        </Route>
-
-      </Routes>
-    </BrowserRouter>
+              {/* Results & profile */}
+              <Route path="/insights" element={<Insights />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </div>
+    </>
   );
 }
