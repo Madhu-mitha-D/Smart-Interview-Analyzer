@@ -11,7 +11,7 @@ sentence-transformers
 openai
 openai-whisper
 nltk
-numpy
+numpygit 
 scikit-learn
 SpeechRecognition
 pydub
