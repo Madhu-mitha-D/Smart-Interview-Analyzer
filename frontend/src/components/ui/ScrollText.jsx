@@ -1,33 +1,21 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 
-export default function ScrollText({
-  as = "p",
-  text,
-  className = "",
-  delay = 0,
-}) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
-  const Tag = as;
-
+export default function ScrollText({ text = "", className = "", delay = 0, as: Tag = "p" }) {
+  const words = text.split(" ");
   return (
-    <div ref={ref} className="overflow-hidden">
-      <motion.div
-        initial={{ opacity: 0, y: 36, filter: "blur(12px)" }}
-        animate={
-          isInView
-            ? { opacity: 1, y: 0, filter: "blur(0px)" }
-            : { opacity: 0, y: 36, filter: "blur(12px)" }
-        }
-        transition={{
-          duration: 0.8,
-          delay,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-      >
-        <Tag className={className}>{text}</Tag>
-      </motion.div>
-    </div>
+    <Tag className={className}>
+      {words.map((word, i) => (
+        <motion.span
+          key={i}
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.5, delay: delay + i * 0.04, ease: [0.16, 1, 0.3, 1] }}
+          className="inline-block mr-[0.26em]"
+        >
+          {word}
+        </motion.span>
+      ))}
+    </Tag>
   );
 }

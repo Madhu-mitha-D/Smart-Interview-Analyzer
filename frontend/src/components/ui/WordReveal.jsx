@@ -1,37 +1,21 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 
-export default function WordReveal({
-  text,
-  className = "",
-  delay = 0,
-}) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
-
+export default function WordReveal({ text = "", className = "", delay = 0, as: Tag = "div" }) {
   const words = text.split(" ");
-
   return (
-    <div ref={ref} className={`flex flex-wrap ${className}`}>
+    <Tag className={className} style={{ fontFamily: "var(--font-display)" }}>
       {words.map((word, i) => (
         <motion.span
-          key={`${word}-${i}`}
-          initial={{ opacity: 0, y: 24, filter: "blur(10px)" }}
-          animate={
-            isInView
-              ? { opacity: 1, y: 0, filter: "blur(0px)" }
-              : { opacity: 0, y: 24, filter: "blur(10px)" }
-          }
-          transition={{
-            duration: 0.65,
-            delay: delay + i * 0.06,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          className="mr-3 inline-block"
+          key={i}
+          initial={{ opacity: 0, y: "110%", filter: "blur(4px)" }}
+          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.55, delay: delay + i * 0.045, ease: [0.16, 1, 0.3, 1] }}
+          className="inline-block mr-[0.25em]"
         >
           {word}
         </motion.span>
       ))}
-    </div>
+    </Tag>
   );
 }

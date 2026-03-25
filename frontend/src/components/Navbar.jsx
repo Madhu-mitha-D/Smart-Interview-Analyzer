@@ -1,123 +1,52 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
-function HomeIcon() {
+const NAV_LINKS = [
+  { to: "/",           label: "Home",      key: "home" },
+  { to: "/dashboard",  label: "Dashboard", key: "dashboard" },
+  { to: "/interview",  label: "Interview", key: "interview" },
+  { to: "/insights",   label: "Insights",  key: "insights" },
+  { to: "/analytics",  label: "Analytics", key: "analytics" },
+  { to: "/profile",    label: "Profile",   key: "profile" },
+];
+
+/* ── Animated hamburger/X toggle (header-2 style) ─────────── */
+function MenuToggleIcon({ open }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-      <path d="M9 21v-6h6v6" />
+    <svg
+      strokeWidth={2.5}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 32 32"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-5 h-5"
+      style={{
+        transform: open ? "rotate(-45deg)" : "rotate(0deg)",
+        transition: "transform 300ms ease-in-out",
+      }}
+    >
+      <path
+        style={{
+          strokeDasharray: open ? "20 300" : "12 63",
+          strokeDashoffset: open ? "-32.42px" : "0",
+          transition: "stroke-dasharray 300ms, stroke-dashoffset 300ms",
+        }}
+        d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
+      />
+      <path d="M7 16 27 16" />
     </svg>
-  );
-}
-
-function DashboardIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="4" rx="1.5" />
-      <rect x="14" y="10" width="7" height="11" rx="1.5" />
-      <rect x="3" y="13" width="7" height="8" rx="1.5" />
-    </svg>
-  );
-}
-
-function InterviewIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M5 10a7 7 0 0 0 14 0" />
-      <path d="M12 17v4" />
-      <path d="M8 21h8" />
-    </svg>
-  );
-}
-
-function InsightsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
-      <path d="M9 18h6" />
-      <path d="M10 22h4" />
-      <path d="M8.5 14.5C7 13.4 6 11.6 6 9.5A6 6 0 0 1 18 9.5c0 2.1-1 3.9-2.5 5" />
-      <path d="M9 14h6" />
-    </svg>
-  );
-}
-
-function AnalyticsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
-      <path d="M4 20V10" />
-      <path d="M10 20V4" />
-      <path d="M16 20v-7" />
-      <path d="M22 20v-12" />
-    </svg>
-  );
-}
-
-function ProfileIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[18px] w-[18px]">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20a8 8 0 0 1 16 0" />
-    </svg>
-  );
-}
-
-function LogoutIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-[16px] w-[16px]">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="M16 17l5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
-  );
-}
-
-function NavIconPill({ to, label, icon, active, hovered, onHover, onLeave }) {
-  const expanded = hovered || active;
-
-  return (
-    <Link to={to} onMouseEnter={onHover} onMouseLeave={onLeave}>
-      <motion.div
-        initial={false}
-        animate={{ width: expanded ? 138 : 44 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
-        className={[
-          "flex h-10 items-center overflow-hidden rounded-full border px-3",
-          active
-            ? "border-white/15 bg-white/[0.08] text-white"
-            : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06] hover:text-white",
-        ].join(" ")}
-      >
-        <div className="flex min-w-[18px] items-center justify-center">{icon}</div>
-
-        <AnimatePresence initial={false}>
-          {expanded ? (
-            <motion.span
-              key="label"
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
-              transition={{ duration: 0.12 }}
-              className="ml-3 whitespace-nowrap text-sm"
-            >
-              {label}
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
-      </motion.div>
-    </Link>
   );
 }
 
 export default function Navbar({ title = "Home" }) {
   const nav = useNavigate();
   const loc = useLocation();
-  const [hoveredItem, setHoveredItem] = useState("");
-  const [showNav, setShowNav] = useState(true);
-  const lastScrollY = useRef(0);
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const lastY = useRef(0);
 
   const token = localStorage.getItem("token");
   const isAuthed = Boolean(token);
@@ -127,141 +56,223 @@ export default function Navbar({ title = "Home" }) {
     nav("/login", { replace: true });
   };
 
+  // Scroll detection — header-2 style (shrinks + floats on scroll)
   useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-
-      if (currentY <= 16) {
-        setShowNav(true);
-      } else if (currentY > lastScrollY.current + 6) {
-        setShowNav(false);
-      } else if (currentY < lastScrollY.current - 6) {
-        setShowNav(true);
-      }
-
-      lastScrollY.current = currentY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 10);
+      if (y <= 16) { setVisible(true); }
+      else if (y > lastY.current + 8) { setVisible(false); setOpen(false); }
+      else if (y < lastY.current - 8) { setVisible(true); }
+      lastY.current = y;
     };
-
-    lastScrollY.current = window.scrollY;
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => window.removeEventListener("scroll", handleScroll);
+    lastY.current = window.scrollY;
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const isHome = loc.pathname === "/";
-  const isDashboard = loc.pathname.startsWith("/dashboard");
-  const isInterview = loc.pathname.startsWith("/interview");
-  const isInsights = loc.pathname.startsWith("/insights");
-  const isAnalytics = loc.pathname.startsWith("/analytics");
-  const isProfile = loc.pathname.startsWith("/profile");
+  // Lock body when mobile menu open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  const activeKey = NAV_LINKS.find(l =>
+    l.key === "home" ? loc.pathname === "/" : loc.pathname.startsWith(l.to)
+  )?.key;
 
   return (
-    <motion.div
-      initial={{ y: 0, opacity: 1 }}
-      animate={{ y: showNav ? 0 : -100, opacity: showNav ? 1 : 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className="sticky top-0 z-50"
-    >
-      <div className="border-b border-white/8 bg-black/20 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div id="navbar-brand-anchor" className="flex min-w-0 items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/[0.05]">
-              <span className="text-[11px] font-semibold tracking-[0.18em] text-white">
-                SIA
+    <>
+      {/* ── Floating pill navbar ───────────────────────────── */}
+      <motion.header
+        animate={{ y: visible ? 0 : -90, opacity: visible ? 1 : 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="fixed top-0 inset-x-0 z-50 flex justify-center"
+        style={{ paddingTop: scrolled ? 12 : 20, paddingLeft: 16, paddingRight: 16 }}
+      >
+        <nav
+          className="w-full transition-all duration-300 ease-out"
+          style={{
+            maxWidth: scrolled ? 840 : 1080,
+            borderRadius: 999,
+            border: "1px solid",
+            borderColor: scrolled ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
+            background: scrolled
+              ? "rgba(5,5,18,0.92)"
+              : "rgba(5,5,18,0.5)",
+            backdropFilter: "blur(32px) saturate(180%)",
+            WebkitBackdropFilter: "blur(32px) saturate(180%)",
+            boxShadow: scrolled ? "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(109,95,255,0.08)" : "none",
+          }}
+        >
+          <div
+            className="flex items-center justify-between gap-3 transition-all duration-300"
+            style={{ padding: scrolled ? "8px 16px" : "10px 20px" }}
+          >
+            {/* Brand */}
+            <Link to="/" className="flex items-center gap-2.5 flex-shrink-0" onClick={() => setOpen(false)}>
+              <div
+                className="rounded-xl flex items-center justify-center relative overflow-hidden flex-shrink-0 transition-all duration-300"
+                style={{
+                  width: scrolled ? 30 : 34,
+                  height: scrolled ? 30 : 34,
+                  borderRadius: scrolled ? 10 : 12,
+                  background: "linear-gradient(135deg, #6d5fff 0%, #00e5cc 100%)",
+                  boxShadow: "0 0 16px rgba(109,95,255,0.5)",
+                }}
+              >
+                <span className="text-[10px] font-black text-white tracking-tight select-none">SI</span>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+              </div>
+              <span
+                className="font-bold text-white/90 transition-all duration-300 hidden sm:block"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: scrolled ? 13 : 14,
+                  letterSpacing: "-0.2px",
+                }}
+              >
+                Smart Interview
               </span>
-            </div>
+            </Link>
 
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Smart Interview Analyzer</p>
-              <p className="truncate text-xs text-white/38">{title}</p>
+            {/* Desktop links */}
+            {isAuthed && (
+              <div className="hidden md:flex items-center">
+                {NAV_LINKS.map((link) => {
+                  const isActive = activeKey === link.key;
+                  return (
+                    <Link
+                      key={link.key}
+                      to={link.to}
+                      className="relative px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150"
+                      style={{
+                        color: isActive ? "#fff" : "rgba(237,237,245,0.52)",
+                        background: isActive ? "rgba(109,95,255,0.18)" : "transparent",
+                        border: isActive ? "1px solid rgba(109,95,255,0.4)" : "1px solid transparent",
+                      }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = "rgba(237,237,245,0.88)"; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = "rgba(237,237,245,0.52)"; }}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Right side */}
+            <div className="flex items-center gap-2">
+              {isAuthed ? (
+                <>
+                  {/* Page indicator pill */}
+                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.07] bg-white/[0.03]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: "navPing 2.2s ease-in-out infinite" }} />
+                    <span className="text-[10px] text-white/35 font-mono uppercase tracking-widest">{title}</span>
+                  </div>
+
+                  <button
+                    onClick={logout}
+                    className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-white/[0.09] bg-white/[0.04] text-[13px] text-white/60 font-medium hover:bg-white/[0.09] hover:text-white/90 transition-all"
+                  >
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3 h-3">
+                      <path d="M5 13H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h3"/>
+                      <path d="M10 10l3-3-3-3"/>
+                      <path d="M13 7H5"/>
+                    </svg>
+                    Logout
+                  </button>
+
+                  {/* Mobile burger */}
+                  <button
+                    onClick={() => setOpen(!open)}
+                    className="md:hidden flex items-center justify-center w-9 h-9 rounded-full border border-white/[0.1] bg-white/[0.05] text-white/70 hover:text-white transition-colors"
+                  >
+                    <MenuToggleIcon open={open} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="px-4 py-2 rounded-full border border-white/[0.09] bg-white/[0.04] text-[13px] text-white/75 font-medium hover:bg-white/[0.08] hover:text-white transition-all">
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-4 py-2 rounded-full text-[13px] font-bold text-white btn-shimmer transition-all"
+                    style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)", boxShadow: "0 0 16px rgba(109,95,255,0.3)" }}
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
+        </nav>
+      </motion.header>
 
-          {isAuthed ? (
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 lg:flex">
-                <NavIconPill
-                  to="/"
-                  label="Home"
-                  icon={<HomeIcon />}
-                  active={isHome}
-                  hovered={hoveredItem === "home"}
-                  onHover={() => setHoveredItem("home")}
-                  onLeave={() => setHoveredItem("")}
-                />
-                <NavIconPill
-                  to="/dashboard"
-                  label="Dashboard"
-                  icon={<DashboardIcon />}
-                  active={isDashboard}
-                  hovered={hoveredItem === "dashboard"}
-                  onHover={() => setHoveredItem("dashboard")}
-                  onLeave={() => setHoveredItem("")}
-                />
-                <NavIconPill
-                  to="/interview"
-                  label="Interview"
-                  icon={<InterviewIcon />}
-                  active={isInterview}
-                  hovered={hoveredItem === "interview"}
-                  onHover={() => setHoveredItem("interview")}
-                  onLeave={() => setHoveredItem("")}
-                />
-                <NavIconPill
-                  to="/insights"
-                  label="Insights"
-                  icon={<InsightsIcon />}
-                  active={isInsights}
-                  hovered={hoveredItem === "insights"}
-                  onHover={() => setHoveredItem("insights")}
-                  onLeave={() => setHoveredItem("")}
-                />
-                <NavIconPill
-                  to="/analytics"
-                  label="Analytics"
-                  icon={<AnalyticsIcon />}
-                  active={isAnalytics}
-                  hovered={hoveredItem === "analytics"}
-                  onHover={() => setHoveredItem("analytics")}
-                  onLeave={() => setHoveredItem("")}
-                />
-                <NavIconPill
-                  to="/profile"
-                  label="Profile"
-                  icon={<ProfileIcon />}
-                  active={isProfile}
-                  hovered={hoveredItem === "profile"}
-                  onHover={() => setHoveredItem("profile")}
-                  onLeave={() => setHoveredItem("")}
-                />
+      {/* ── Mobile menu drawer ─────────────────────────────── */}
+      <AnimatePresence>
+        {open && isAuthed && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-40 md:hidden"
+            style={{ background: "rgba(3,3,10,0.9)", backdropFilter: "blur(16px)" }}
+          >
+            {/* Spacer for navbar */}
+            <div style={{ height: 72 }} />
+
+            <motion.div
+              initial={{ opacity: 0, y: -12, filter: "blur(4px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="flex h-full w-full flex-col justify-between gap-2 p-5 overflow-y-auto"
+            >
+              <div className="grid grid-cols-2 gap-2">
+                {NAV_LINKS.map((link) => {
+                  const isActive = activeKey === link.key;
+                  return (
+                    <Link
+                      key={link.key}
+                      to={link.to}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-all"
+                      style={{
+                        background: isActive ? "rgba(109,95,255,0.2)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${isActive ? "rgba(109,95,255,0.4)" : "rgba(255,255,255,0.08)"}`,
+                        color: isActive ? "#fff" : "rgba(237,237,245,0.6)",
+                      }}
+                    >
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)" }} />}
+                      {link.label}
+                    </Link>
+                  );
+                })}
               </div>
 
-              <button
-                onClick={logout}
-                className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/75 transition hover:bg-white/[0.06] hover:text-white"
-              >
-                <LogoutIcon />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                to="/login"
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06]"
-              >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:scale-[1.03]"
-              >
-                Register
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
+              <div className="flex flex-col gap-3 pb-8">
+                <button
+                  onClick={() => { logout(); setOpen(false); }}
+                  className="w-full py-3.5 rounded-2xl border border-white/[0.08] bg-white/[0.04] text-sm font-semibold text-white/65"
+                >
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+        @keyframes navPing {
+          0%,100% { opacity:1; transform:scale(1); }
+          50% { opacity:0.5; transform:scale(1.4); }
+        }
+      `}</style>
+    </>
   );
 }
