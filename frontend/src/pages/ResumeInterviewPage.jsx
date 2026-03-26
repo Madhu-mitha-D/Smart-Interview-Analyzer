@@ -7,11 +7,15 @@ function Surface({ children, className = "" }) {
   return (
     <div
       className={[
-        "rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.03)]",
+        "relative overflow-hidden rounded-[28px] border border-white/[0.09]",
+        "bg-gradient-to-b from-white/[0.055] to-white/[0.018]",
+        "shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl",
         className,
       ].join(" ")}
     >
-      {children}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent" />
+      <div className="absolute -right-10 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(0,229,204,0.14),transparent)] blur-3xl pointer-events-none" />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
@@ -30,16 +34,19 @@ export default function ResumeInterviewPage() {
         <Surface className="p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-white/60">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-white/55">
                 <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
                 Resume interview
               </div>
 
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h1
+                className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 Start your resume-based interview
               </h1>
 
-              <p className="mt-3 text-sm leading-6 text-white/65 sm:text-base">
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/50 sm:text-base">
                 Upload your resume and generate a personalized interview based on
                 your profile, projects, skills, and experience.
               </p>

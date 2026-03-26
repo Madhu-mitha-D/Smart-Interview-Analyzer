@@ -1,344 +1,471 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import api from "../api/axios";
-import Footer from "../components/Footer";
-import {
-  BarChart3, TrendingUp, MessageCircle, Target,
-  ThumbsUp, ThumbsDown, AlertCircle, Activity,
-} from "lucide-react";
 
-/* ── GlassCard ───────────────────────────────────────────────── */
-function GlassCard({ children, className = "", accent }) {
-  const [g, setG] = useState({ x: 50, y: 50 });
+function StatCard({ label, value, sub }) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.2 }}
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        setG({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
-      }}
-      className={`group relative overflow-hidden rounded-[24px] border border-white/[0.09] transition-all duration-300 hover:border-white/[0.15] ${className}`}
-      style={{
-        background: "linear-gradient(180deg,rgba(255,255,255,0.055) 0%,rgba(255,255,255,0.018) 100%)",
-        backdropFilter: "blur(20px)",
-      }}
-    >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
-      {accent && (
-        <div
-          className="absolute -top-12 -right-8 w-32 h-32 rounded-full opacity-35 pointer-events-none"
-          style={{ background: `radial-gradient(circle,${accent}55,transparent)`, filter: "blur(28px)" }}
-        />
-      )}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ background: `radial-gradient(350px circle at ${g.x}% ${g.y}%, rgba(109,95,255,0.07), transparent 50%)` }}
-      />
-      <div className="relative z-10">{children}</div>
-    </motion.div>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <p className="text-white/60 text-sm">{label}</p>
+      <p className="text-2xl font-semibold mt-1">{value}</p>
+      {sub ? <p className="text-white/50 text-xs mt-1">{sub}</p> : null}
+    </div>
   );
 }
 
-/* ── Stat card ───────────────────────────────────────────────── */
-function StatCard({ icon: Icon, label, value, sub, accent = "#6d5fff", delay = 0 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-    >
-      <GlassCard className="p-5" accent={accent}>
-        <div className="flex items-start justify-between mb-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: `${accent}18`, border: `1px solid ${accent}30` }}
-          >
-            <Icon className="w-4 h-4" style={{ color: accent }} />
-          </div>
-        </div>
-        <p
-          className="text-2xl font-extrabold text-white mb-1"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          {value}
-        </p>
-        <p className="text-[11px] font-mono text-white/35 uppercase tracking-widest">{label}</p>
-        {sub && <p className="text-[11px] text-white/28 mt-0.5">{sub}</p>}
-      </GlassCard>
-    </motion.div>
-  );
-}
-
-/* ── Metric bar ──────────────────────────────────────────────── */
-function MetricBar({ label, value, max = 10, suffix = "" }) {
+function Bar({ label, value, max = 10 }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-black/15 p-4">
-      <div className="flex items-center justify-between gap-3 mb-2.5">
-        <p className="text-[12.5px] text-white/65">{label}</p>
-        <p className="text-[12.5px] font-bold text-white font-mono">
-          {typeof value === "number" ? value.toFixed(2) : value}{suffix}
-        </p>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-white/70 text-sm">{label}</p>
+        <p className="text-white/80 text-sm">{value}</p>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="h-full rounded-full"
-          style={{ background: "linear-gradient(90deg,#6d5fff,#00e5cc)" }}
-        />
+      <div className="mt-3 h-3 w-full rounded-full bg-white/10 overflow-hidden">
+        <div className="h-full rounded-full bg-white/70" style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-1.5 text-[9px] font-mono text-white/20">0 → {max}</p>
+      <p className="text-white/40 text-xs mt-2">0 → {max}</p>
     </div>
   );
 }
 
-/* ── Mini bar chart row ──────────────────────────────────────── */
-function BarRows({ rows }) {
-  const maxVal = Math.max(...rows.map((r) => r.value), 1);
+function MiniBars({ title, rows }) {
   return (
-    <div className="space-y-3">
-      {rows.map(({ label, value }) => {
-        const pct = (value / maxVal) * 100;
-        return (
-          <div key={label}>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[12px] text-white/55">{label}</p>
-              <p className="text-[12px] font-bold text-white font-mono">{typeof value === "number" ? value.toFixed(2) : value}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      <div className="mt-4 grid gap-3">
+        {rows.map((r) => {
+          const pct =
+            r.max > 0 ? Math.max(0, Math.min(100, (r.value / r.max) * 100)) : 0;
+          return (
+            <div
+              key={r.label}
+              className="rounded-xl border border-white/10 bg-black/30 p-4"
+            >
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/80">{r.label}</span>
+                <span className="text-white/60">{r.value}</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full bg-white/70" style={{ width: `${pct}%` }} />
+              </div>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full rounded-full"
-                style={{ background: "linear-gradient(90deg,#6d5fff,#00e5cc)" }}
-              />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-/* ── Answer panel ────────────────────────────────────────────── */
-function AnswerPanel({ title, tone, answer }) {
-  if (!answer) return null;
-  const colors = { good: { border: "rgba(0,229,204,0.3)", bg: "rgba(0,229,204,0.06)", text: "#00e5cc" },
-                   bad:  { border: "rgba(255,77,136,0.3)", bg: "rgba(255,77,136,0.06)", text: "#ff4d88" } };
-  const c = colors[tone] || colors.good;
-  const Icon = tone === "good" ? ThumbsUp : ThumbsDown;
+function ScoreProgress({ data }) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
+        No per-question data yet.
+      </div>
+    );
+  }
+
+  const rows = data
+    .map((x) => ({
+      qNo: x.q_no ?? (x.q_index ?? 0) + 1,
+      score: Number(x.score ?? 0),
+      similarity: Number(x.similarity ?? 0),
+      len: Number(x.answer_len ?? 0),
+      wpm: Number(x.words_per_minute ?? 0),
+      commScore: Number(x.communication_score ?? 0),
+      fillers: Number(x.filler_count ?? 0),
+      pauses: Number(x.pause_count ?? 0),
+      pace: x.pace_label ?? "—",
+    }))
+    .sort((a, b) => a.qNo - b.qNo);
 
   return (
-    <GlassCard className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <div
-          className="w-7 h-7 rounded-xl flex items-center justify-center"
-          style={{ background: `${c.text}18`, border: `1px solid ${c.border}` }}
-        >
-          <Icon className="w-3.5 h-3.5" style={{ color: c.text }} />
-        </div>
-        <h3 className="text-[14px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>{title}</h3>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">Score Progress</h2>
+        <p className="text-white/50 text-sm">Per question (0–10)</p>
       </div>
-      {answer.question && (
-        <p className="text-[12px] text-white/40 mb-3 font-mono leading-relaxed">
-          Q: <span className="text-white/60">{answer.question}</span>
-        </p>
-      )}
-      <div
-        className="rounded-xl border p-4 mb-3"
-        style={{ borderColor: c.border, background: c.bg }}
-      >
-        <p className="text-[13px] text-white/70 leading-7">
-          {answer.feedback || answer.text || "—"}
-        </p>
+
+      <div className="mt-4 grid gap-3">
+        {rows.map((r) => {
+          const pct = Math.max(0, Math.min(100, (r.score / 10) * 100));
+          return (
+            <div key={r.qNo} className="rounded-xl border border-white/10 bg-black/30 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="text-white/80">Q{r.qNo}</span>
+                <div className="flex flex-wrap items-center gap-3 text-white/60">
+                  <span>Score: <span className="text-white/85">{r.score}</span></span>
+                  <span>Sim: <span className="text-white/85">{r.similarity.toFixed(2)}</span></span>
+                  <span>Len: <span className="text-white/85">{r.len}</span></span>
+                  <span>WPM: <span className="text-white/85">{r.wpm.toFixed(1)}</span></span>
+                  <span>Pace: <span className="text-white/85">{r.pace}</span></span>
+                </div>
+              </div>
+
+              <div className="mt-3 h-3 w-full rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full bg-white/70 rounded-full" style={{ width: `${pct}%` }} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-3 text-xs text-white/55">
+                <span>Comm Score: {r.commScore.toFixed(2)}</span>
+                <span>Fillers: {r.fillers}</span>
+                <span>Pauses: {r.pauses}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {answer.score != null && (
-        <p className="text-[11px] font-mono text-white/35">
-          Score: <span className="text-white/70 font-bold">{Number(answer.score).toFixed(1)} / 10</span>
-        </p>
-      )}
-    </GlassCard>
+    </div>
   );
 }
 
-/* ── Skeleton ────────────────────────────────────────────────── */
-function Skel({ h = "h-28" }) {
-  return <div className={`${h} rounded-2xl bg-white/[0.04] animate-pulse`} />;
-}
-
-/* ── Main ────────────────────────────────────────────────────── */
 export default function Analytics() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const sessionId = searchParams.get("session_id");
+  const nav = useNavigate();
+  const [sp] = useSearchParams();
+  const sessionId = sp.get("session_id") || "";
 
-  const [data, setData]       = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [msg, setMsg]         = useState("");
+  const [data, setData] = useState(null);
+  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showRaw, setShowRaw] = useState(false);
+
+  const isOverall = !sessionId || !!data?.overall;
 
   useEffect(() => {
-    const url = sessionId
-      ? `/analysis/session/${encodeURIComponent(sessionId)}`
-      : "/analysis/me";
-
     (async () => {
+      setLoading(true);
+      setMsg("");
       try {
+        const url = sessionId
+          ? `/analytics/${encodeURIComponent(sessionId)}`
+          : "/analytics";
+
         const res = await api.get(url);
         setData(res.data);
       } catch (e) {
-        if (e?.response?.status === 401) { localStorage.removeItem("token"); navigate("/login", { replace: true }); }
-        else setMsg(e?.response?.data?.detail || "Failed to load analytics.");
+        setMsg(e?.response?.data?.detail || "Failed to load analytics");
       } finally {
         setLoading(false);
       }
     })();
   }, [sessionId]);
 
-  if (!data && !loading && !msg) return null;
-
-  const overall = data?.overall || data;
-  const comms   = data?.communication;
-  const scores  = data?.scores;
-  const ansLen  = data?.answer_length;
-  const sim     = data?.similarity;
+  const topFeedback = useMemo(() => {
+    const map = data?.feedback_summary || {};
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [data]);
 
   return (
-    <div className="min-h-screen text-white">
-      <div className="mx-auto max-w-5xl px-4 pt-12 pb-8">
-
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
-        >
-          <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03]">
-            <Activity className="w-3.5 h-3.5 text-teal-400" />
-            <span className="text-[11px] font-mono text-white/45 uppercase tracking-widest">
-              {sessionId ? "Session Analytics" : "Overall Analytics"}
-            </span>
+    <div className="min-h-screen bg-black text-white px-6 py-10">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="max-w-6xl mx-auto"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold">
+              {isOverall ? "Overall Analytics" : "Analytics"}
+            </h1>
+            <p className="mt-2 text-white/70">
+              {isOverall ? (
+                <>User-level analytics across all sessions</>
+              ) : (
+                <>
+                  Session: <span className="text-white/90">{sessionId || "—"}</span>
+                </>
+              )}
+            </p>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white" style={{ fontFamily: "var(--font-display)" }}>
-            Deep Analysis
-          </h1>
-          <p className="mt-2 text-white/38 text-sm">
-            {sessionId ? `Session · #${sessionId.slice(-12)}` : "Aggregated across all your sessions"}
-          </p>
-        </motion.div>
 
-        {/* Error */}
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => nav(-1)}
+              className="border border-white/20 px-4 py-2 rounded-xl hover:bg-white/10 transition"
+            >
+              Back
+            </button>
+
+            <Link
+              to={
+                sessionId
+                  ? `/insights?session_id=${encodeURIComponent(sessionId)}`
+                  : "/insights"
+              }
+              className="bg-white text-black px-4 py-2 rounded-xl font-medium hover:scale-[1.02] transition"
+            >
+              Insights
+            </Link>
+
+            <button
+              onClick={() => setShowRaw((v) => !v)}
+              className="border border-white/20 px-4 py-2 rounded-xl hover:bg-white/10 transition"
+            >
+              {showRaw ? "Hide JSON" : "Show JSON"}
+            </button>
+          </div>
+        </div>
+
         {msg && (
-          <div className="mb-6 flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-red-500/20 bg-red-500/[0.08]">
-            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-            <p className="text-[13px] text-red-300">{msg}</p>
+          <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+            {msg}
           </div>
         )}
 
         {loading ? (
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => <Skel key={i} />)}
-            </div>
-            <Skel h="h-48" />
-            <div className="grid sm:grid-cols-2 gap-4"><Skel h="h-56" /><Skel h="h-56" /></div>
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
+            Loading analytics...
           </div>
-        ) : data ? (
-          <div className="space-y-6">
-
-            {/* Top stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <StatCard icon={BarChart3}    label="Total Sessions"   value={overall?.total_sessions ?? "—"}                                                           accent="#6d5fff" delay={0.05} />
-              <StatCard icon={TrendingUp}   label="Avg Score"         value={`${Number(scores?.average_score ?? overall?.avg_score ?? 0).toFixed(1)}/10`}             accent="#00e5cc" delay={0.1}  />
-              <StatCard icon={MessageCircle}label="Avg Comm Score"    value={`${Number(comms?.avg_communication_score ?? 0).toFixed(1)}/10`} sub="Voice quality"       accent="#a78bfa" delay={0.15} />
-              <StatCard icon={Target}       label="Total Fillers"     value={comms?.total_filler_count ?? "—"} sub="um, uh, like…"                                    accent="#ff4d88" delay={0.2}  />
+        ) : !data ? null : isOverall ? (
+          <div className="mt-6 grid gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Total Sessions"
+                value={data.total_sessions ?? 0}
+                sub="All interview sessions"
+              />
+              <StatCard
+                label="Completed"
+                value={data.completed_sessions ?? 0}
+                sub="Finished sessions"
+              />
+              <StatCard
+                label="Incomplete"
+                value={data.incomplete_sessions ?? 0}
+                sub="Pending sessions"
+              />
+              <StatCard
+                label="Avg Total Score"
+                value={Number(data.average_total_score ?? 0).toFixed(2)}
+                sub="Per session"
+              />
             </div>
 
-            {/* Score metrics */}
-            {scores && (
-              <GlassCard className="p-6" accent="#6d5fff">
-                <div className="flex items-center gap-2 mb-5">
-                  <BarChart3 className="w-4 h-4 text-purple-400" />
-                  <h2 className="text-[15px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Score Metrics</h2>
-                </div>
-                <div className="space-y-3">
-                  <MetricBar label="Average Score"     value={Number(scores.average_score ?? 0)}     max={10} />
-                  <MetricBar label="Average Similarity" value={Number(sim?.avg_similarity ?? 0)}     max={1} />
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Two-col section */}
-            <div className="grid sm:grid-cols-2 gap-6">
-              {/* Answer length */}
-              {ansLen && (
-                <GlassCard className="p-6">
-                  <p className="text-[10px] font-mono text-white/28 uppercase tracking-widest mb-1">Answer Length</p>
-                  <h3 className="text-[15px] font-bold text-white mb-5" style={{ fontFamily: "var(--font-display)" }}>
-                    Response Detail
-                  </h3>
-                  <BarRows rows={[
-                    { label: "Average chars", value: Math.round(Number(ansLen.avg_chars ?? 0)) },
-                    { label: "Min chars",     value: Number(ansLen.min_chars ?? 0) },
-                    { label: "Max chars",     value: Number(ansLen.max_chars ?? 0) },
-                  ]} />
-                </GlassCard>
-              )}
-
-              {/* Similarity */}
-              {sim && (
-                <GlassCard className="p-6">
-                  <p className="text-[10px] font-mono text-white/28 uppercase tracking-widest mb-1">Similarity</p>
-                  <h3 className="text-[15px] font-bold text-white mb-5" style={{ fontFamily: "var(--font-display)" }}>
-                    Answer Alignment
-                  </h3>
-                  <BarRows rows={[
-                    { label: "Min",     value: Number(sim.min_similarity ?? 0) },
-                    { label: "Average", value: Number(sim.avg_similarity ?? 0) },
-                    { label: "Max",     value: Number(sim.max_similarity ?? 0) },
-                  ]} />
-                </GlassCard>
-              )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Bar
+                label="Completion Rate"
+                value={Number(data.completed_sessions ?? 0)}
+                max={Math.max(1, Number(data.total_sessions ?? 0))}
+              />
+              <Bar
+                label="Average Total Score"
+                value={Number(data.average_total_score ?? 0)}
+                max={30}
+              />
             </div>
 
-            {/* Communication breakdown */}
-            {comms && (
-              <GlassCard className="p-6" accent="#a78bfa">
-                <div className="flex items-center gap-2 mb-5">
-                  <MessageCircle className="w-4 h-4 text-purple-400" />
-                  <h2 className="text-[15px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
-                    Communication Quality
-                  </h2>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {[
-                    { label: "Avg Comm Score",    value: Number(comms.avg_communication_score ?? 0), max: 10 },
-                    { label: "Avg Filler Rate",   value: Number(comms.avg_filler_rate ?? 0),         max: 1, suffix: "/word" },
-                    { label: "Avg Word Count",    value: Math.round(Number(comms.avg_word_count ?? 0)), max: 200 },
-                    { label: "Total Fillers",     value: Number(comms.total_filler_count ?? 0),      max: Math.max(50, comms.total_filler_count ?? 1) },
-                  ].map((m) => (
-                    <MetricBar key={m.label} label={m.label} value={m.value} max={m.max} suffix={m.suffix} />
-                  ))}
-                </div>
-              </GlassCard>
-            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <MiniBars
+                title="Domain Distribution"
+                rows={Object.entries(data.domains || {}).map(([label, value]) => ({
+                  label,
+                  value: Number(value || 0),
+                  max: Math.max(
+                    1,
+                    ...Object.values(data.domains || {}).map((v) => Number(v || 0))
+                  ),
+                }))}
+              />
 
-            {/* Best / worst answers */}
-            {(data.best_answer || data.worst_answer) && (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <AnswerPanel title="Best Answer"    tone="good" answer={data.best_answer}  />
-                <AnswerPanel title="Weakest Answer" tone="bad"  answer={data.worst_answer} />
+              <MiniBars
+                title="Difficulty Distribution"
+                rows={Object.entries(data.difficulty_distribution || {}).map(
+                  ([label, value]) => ({
+                    label,
+                    value: Number(value || 0),
+                    max: Math.max(
+                      1,
+                      ...Object.values(data.difficulty_distribution || {}).map((v) =>
+                        Number(v || 0)
+                      )
+                    ),
+                  })
+                )}
+              />
+            </div>
+
+            {showRaw ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-xl font-semibold">Raw JSON</h2>
+                <pre className="mt-4 text-xs bg-black/40 p-4 rounded-xl overflow-auto">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
               </div>
-            )}
+            ) : null}
           </div>
-        ) : null}
-      </div>
-      <Footer />
+        ) : (
+          <div className="mt-6 grid gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Progress"
+                value={`${data.progress?.answered ?? 0} / ${data.progress?.total_questions ?? 0}`}
+                sub={data.progress?.finished ? "Finished" : "In progress"}
+              />
+              <StatCard label="Total Score" value={data.scores?.total_score ?? 0} sub="Sum of scores" />
+              <StatCard
+                label="Average Score"
+                value={`${Number(data.scores?.average_score ?? 0).toFixed(2)} / 10`}
+                sub="Across total questions"
+              />
+              <StatCard
+                label="Avg Similarity"
+                value={Number(data.similarity?.avg_similarity ?? 0).toFixed(2)}
+                sub={`Min ${Number(data.similarity?.min_similarity ?? 0).toFixed(2)} • Max ${Number(
+                  data.similarity?.max_similarity ?? 0
+                ).toFixed(2)}`}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Avg Words / Min"
+                value={Number(data.communication?.avg_words_per_minute ?? 0).toFixed(2)}
+                sub="Speaking speed"
+              />
+              <StatCard
+                label="Avg Comm Score"
+                value={`${Number(data.communication?.avg_communication_score ?? 0).toFixed(2)} / 10`}
+                sub="Voice communication"
+              />
+              <StatCard
+                label="Total Fillers"
+                value={data.communication?.total_filler_count ?? 0}
+                sub="um, uh, like..."
+              />
+              <StatCard
+                label="Total Pauses"
+                value={data.communication?.total_pause_count ?? 0}
+                sub="Estimated pauses"
+              />
+            </div>
+
+            <ScoreProgress data={data.score_per_question || []} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Bar label="Average Score" value={Number(data.scores?.average_score ?? 0)} max={10} />
+              <Bar label="Average Similarity" value={Number(data.similarity?.avg_similarity ?? 0)} max={1} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <MiniBars
+                title="Answer Length (chars)"
+                rows={[
+                  {
+                    label: "Average",
+                    value: Math.round(Number(data.answer_length?.avg_chars ?? 0)),
+                    max: Math.max(200, Number(data.answer_length?.max_chars ?? 0) || 200),
+                  },
+                  {
+                    label: "Min",
+                    value: Number(data.answer_length?.min_chars ?? 0),
+                    max: Math.max(200, Number(data.answer_length?.max_chars ?? 0) || 200),
+                  },
+                  {
+                    label: "Max",
+                    value: Number(data.answer_length?.max_chars ?? 0),
+                    max: Math.max(200, Number(data.answer_length?.max_chars ?? 0) || 200),
+                  },
+                ]}
+              />
+
+              <MiniBars
+                title="Similarity Spread"
+                rows={[
+                  { label: "Min", value: Number(data.similarity?.min_similarity ?? 0), max: 1 },
+                  { label: "Avg", value: Number(data.similarity?.avg_similarity ?? 0), max: 1 },
+                  { label: "Max", value: Number(data.similarity?.max_similarity ?? 0), max: 1 },
+                ]}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-xl font-semibold">Best Answer</h2>
+                <p className="mt-2 text-white/70 text-sm">
+                  Q{(data.best_answer?.question_index ?? 0) + 1}:{" "}
+                  <span className="text-white/90">{data.best_answer?.question || "—"}</span>
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-white/60 text-sm">Score</p>
+                    <p className="text-xl font-semibold mt-1">{data.best_answer?.score ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-white/60 text-sm">Similarity</p>
+                    <p className="text-xl font-semibold mt-1">
+                      {Number(data.best_answer?.similarity ?? 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-4">
+                  <p className="text-white/80 whitespace-pre-wrap">{data.best_answer?.feedback || "—"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-xl font-semibold">Weakest Answer</h2>
+                <p className="mt-2 text-white/70 text-sm">
+                  Q{(data.worst_answer?.question_index ?? 0) + 1}:{" "}
+                  <span className="text-white/90">{data.worst_answer?.question || "—"}</span>
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-white/60 text-sm">Score</p>
+                    <p className="text-xl font-semibold mt-1">{data.worst_answer?.score ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-white/60 text-sm">Similarity</p>
+                    <p className="text-xl font-semibold mt-1">
+                      {Number(data.worst_answer?.similarity ?? 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-4">
+                  <p className="text-white/80 whitespace-pre-wrap">{data.worst_answer?.feedback || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <h2 className="text-xl font-semibold">Feedback Summary</h2>
+              <p className="text-white/60 text-sm mt-1">Most repeated feedback messages</p>
+
+              <div className="mt-4 grid gap-3">
+                {topFeedback.length === 0 ? (
+                  <p className="text-white/60">No feedback yet.</p>
+                ) : (
+                  topFeedback.map(([text, count]) => (
+                    <div
+                      key={text}
+                      className="rounded-xl border border-white/10 bg-black/30 p-4 flex items-start justify-between gap-4"
+                    >
+                      <p className="text-white/80 whitespace-pre-wrap">
+                        {text === "NO_FEEDBACK" ? "No feedback stored." : text}
+                      </p>
+                      <span className="text-xs px-2 py-1 rounded-full border border-white/15 bg-white/10 text-white/80">
+                        {count}×
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {showRaw ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h2 className="text-xl font-semibold">Raw JSON</h2>
+                <pre className="mt-4 text-xs bg-black/40 p-4 rounded-xl overflow-auto">
+                  {JSON.stringify(data, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

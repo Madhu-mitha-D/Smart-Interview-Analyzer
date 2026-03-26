@@ -1,260 +1,593 @@
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { Brain, FileText, Code2, ArrowRight, Zap, Shield, Clock } from "lucide-react";
-import Footer from "../components/Footer";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { startInterview, submitAnswer, getInterviewState } from "../api/interviewApi";
+import api from "../api/axios";
+import AudioRecorder from "../components/AudioRecorder";
+import VideoRecorder from "../components/VideoRecorder";
+import { PrimaryButton, GhostButton } from "../components/Buttons";
 
-/* ── Shared card ─────────────────────────────────────────────── */
-function GlowCard({ children, className = "", glow = "violet", onClick }) {
-  const glows = {
-    violet: { border: "rgba(109,95,255,0.35)", blob: "#6d5fff" },
-    cyan:   { border: "rgba(0,229,204,0.3)",   blob: "#00e5cc" },
-    pink:   { border: "rgba(255,77,136,0.3)",   blob: "#ff4d88" },
-  };
-  const c = glows[glow] || glows.violet;
+const SECONDS_PER_QUESTION = 240;
+const DOMAINS = [
+  { value: "hr", label: "HR" },
+  { value: "java", label: "Java" },
+  { value: "dbms", label: "DBMS" },
+  { value: "ai", label: "AI" },
+];
+const DIFFICULTIES = [
+  { value: "easy", label: "Easy", color: "#00e5cc" },
+  { value: "medium", label: "Medium", color: "#f59e0b" },
+  { value: "hard", label: "Hard", color: "#ff4d88" },
+];
+
+function formatTime(s) {
+  return `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
+}
+
+function GlassCard({ children, className = "" }) {
+  return (
+    <div className={["relative overflow-hidden rounded-[24px] border border-white/[0.09] bg-gradient-to-b from-white/[0.055] to-white/[0.018] backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.28)]", className].join(" ")}>
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent" />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
+function CompactTimer({ secondsLeft, totalSeconds, isPaused, onTogglePause }) {
+  const radius = 20, circumference = 2 * Math.PI * radius;
+  const progress = Math.max(0, Math.min(1, secondsLeft / totalSeconds));
+  const dashOffset = circumference * (1 - progress);
+  const danger = secondsLeft <= 20 && !isPaused;
+  const color = danger ? "#ff4d88" : "#6d5fff";
 
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.005 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      onClick={onClick}
-      className={`group relative overflow-hidden rounded-[28px] cursor-pointer border border-white/[0.07] transition-all duration-300 hover:border-[${c.border}] ${className}`}
-      style={{
-        background: "linear-gradient(180deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.015) 100%)",
-        backdropFilter: "blur(24px)",
-      }}
-    >
-      {/* Hover glow blob */}
-      <div
-        className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: `radial-gradient(circle,${c.blob}30,transparent 70%)`, filter: "blur(40px)" }}
-      />
-      {/* Top shimmer */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
-      {/* Hover border */}
-      <div
-        className="absolute inset-0 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-        style={{ boxShadow: `inset 0 0 0 1px ${c.border}` }}
-      />
-      <div className="relative z-10">{children}</div>
+    <div className="flex items-center gap-3 rounded-2xl border border-white/[0.09] bg-white/[0.04] px-3 py-2">
+      <div className="relative flex h-12 w-12 items-center justify-center flex-shrink-0">
+        <svg className="-rotate-90 h-12 w-12 absolute">
+          <circle cx="24" cy="24" r={radius} stroke="rgba(255,255,255,0.08)" strokeWidth="3.5" fill="transparent" />
+          <circle cx="24" cy="24" r={radius} stroke={color} strokeWidth="3.5" fill="transparent"
+            strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round"
+            style={{ transition: "stroke-dashoffset 0.8s ease, stroke 0.2s ease" }} />
+        </svg>
+        <span className={`text-[10px] font-black font-mono ${danger ? "text-[#ff4d88]" : "text-white"}`}>{formatTime(secondsLeft)}</span>
+      </div>
+      <div>
+        <p className="text-[9px] uppercase tracking-widest text-white/35 font-mono">Timer</p>
+        <p className={`text-sm font-semibold ${danger ? "text-[#ff4d88]" : "text-white/75"}`}>{isPaused ? "Paused" : "Running"}</p>
+      </div>
+      <button onClick={onTogglePause}
+        className="w-8 h-8 flex items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-white/60 hover:bg-white/[0.1] hover:text-white transition-all text-xs">
+        {isPaused ? "▶" : "⏸"}
+      </button>
+    </div>
+  );
+}
+
+function CommunicationCard({ communication }) {
+  if (!communication) return null;
+  const metrics = [
+    { label: "Pace", value: communication.pace_label || "—" },
+    { label: "WPM", value: Number(communication.words_per_minute ?? 0).toFixed(1) },
+    { label: "Fillers", value: communication.filler_count ?? 0 },
+    { label: "Pauses", value: communication.pause_count ?? 0 },
+    { label: "Comm Score", value: `${Number(communication.communication_score ?? 0).toFixed(2)}/10` },
+  ];
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-[rgba(0,229,204,0.2)] bg-[rgba(0,229,204,0.05)] p-5">
+      <p className="text-[10px] uppercase tracking-widest text-[#00e5cc] font-mono mb-3">Communication Analysis</p>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {metrics.map(({ label, value }) => (
+          <div key={label} className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
+            <p className="text-[10px] text-white/45 font-mono mb-1">{label}</p>
+            <p className="text-sm font-bold text-white">{value}</p>
+          </div>
+        ))}
+      </div>
     </motion.div>
   );
 }
 
-const MODES = [
-  {
-    id: "domain",
-    icon: Brain,
-    title: "Domain Interview",
-    route: "/interview/domain",
-    tag: "Recommended",
-    tagColor: "#6d5fff",
-    accent: "#6d5fff",
-    accentBg: "rgba(109,95,255,0.12)",
-    accentBorder: "rgba(109,95,255,0.3)",
-    glow: "violet",
-    desc: "Practice core interview questions by domain and difficulty. Get real-time AI feedback and scoring.",
-    chips: ["HR & Behavioral", "Java & OOP", "DBMS", "AI & ML", "+8 more"],
-    perks: ["Adaptive difficulty", "Voice responses", "Instant scoring"],
-  },
-  {
-    id: "resume",
-    icon: FileText,
-    title: "Resume Interview",
-    route: "/interview/resume",
-    tag: "Personalized",
-    tagColor: "#00e5cc",
-    accent: "#00e5cc",
-    accentBg: "rgba(0,229,204,0.1)",
-    accentBorder: "rgba(0,229,204,0.28)",
-    glow: "cyan",
-    desc: "Upload your resume and get custom questions on your actual projects, skills, and experience.",
-    chips: ["Project deep-dives", "Skill probing", "Experience review"],
-    perks: ["Auto-parsed resume", "Context-aware Qs", "Career insights"],
-  },
-  {
-    id: "coding",
-    icon: Code2,
-    title: "Coding Interview",
-    route: "/interview/coding",
-    tag: "Technical",
-    tagColor: "#a78bfa",
-    accent: "#a78bfa",
-    accentBg: "rgba(167,139,250,0.1)",
-    accentBorder: "rgba(167,139,250,0.28)",
-    glow: "pink",
-    desc: "Solve coding problems in a focused in-browser IDE. Real interview-grade challenges across all levels.",
-    chips: ["Arrays & Trees", "DP & Graphs", "System Design"],
-    perks: ["Live code execution", "Multi-language", "Hint system"],
-  },
-];
+export default function DomainInterview() {
+  const nav = useNavigate();
+  const [sp, setSp] = useSearchParams();
+  const resumeSessionId = sp.get("session_id") || "";
 
-const FEATS = [
-  { icon: Zap,    label: "AI-Powered",    desc: "Real-time feedback from LLMs" },
-  { icon: Shield, label: "Safe Practice",  desc: "Low-stakes, high-confidence prep" },
-  { icon: Clock,  label: "10-min sessions",desc: "Bite-sized, consistent growth" },
-];
+  const [session, setSession] = useState(null);
+  const [answer, setAnswer] = useState("");
+  const [msg, setMsg] = useState("");
+  const [loadingStart, setLoadingStart] = useState(false);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
+  const [loadingResume, setLoadingResume] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [finalReport, setFinalReport] = useState(null);
+  const [domain, setDomain] = useState("hr");
+  const [difficulty, setDifficulty] = useState("easy");
+  const [enableVideo, setEnableVideo] = useState(false);
+  const [communication, setCommunication] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(SECONDS_PER_QUESTION);
+  const [timeUp, setTimeUp] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isReadingQuestion, setIsReadingQuestion] = useState(false);
 
-const stagger = {
-  container: { transition: { staggerChildren: 0.1 } },
-  item: { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
-};
+  const autoSubmittedRef = useRef(false);
+  const videoRecorderRef = useRef(null);
+  const spokenQuestionKeyRef = useRef("");
+  const activeSpeechIdRef = useRef(0);
+  const workspaceRef = useRef(null);
+  const forceLogout = () => { localStorage.removeItem("token"); nav("/login", { replace: true }); };
 
-export default function Interview() {
-  const navigate = useNavigate();
+  const stopQuestionSpeech = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsReadingQuestion(false);
+  };
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) setSpeechSupported(true);
+  }, []);
+
+  useEffect(() => {
+    if (!session || finalReport || isPaused) return;
+    if (secondsLeft <= 0) { setTimeUp(true); return; }
+    const t = setTimeout(() => setSecondsLeft(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [session, finalReport, isPaused, secondsLeft]);
+
+  const applyInterviewResponse = (data, opts = {}) => {
+    if (opts.communicationData) setCommunication(opts.communicationData);
+    if (data.is_completed) { setFinalReport(data); return; }
+    setSession(prev => ({
+      ...prev,
+      question: data.question || prev?.question || "",
+      question_index: data.question_index ?? prev?.question_index ?? 0,
+      is_follow_up: !!data.is_follow_up,
+    }));
+    setSecondsLeft(SECONDS_PER_QUESTION);
+    setTimeUp(false);
+    autoSubmittedRef.current = false;
+    setMsg(opts.successPrefix ? `${opts.successPrefix} – Next question loaded` : "");
+  };
+
+  const speakQuestion = (text, opts = {}) => {
+    if (!speechSupported || !text) return;
+    const id = ++activeSpeechIdRef.current;
+    stopQuestionSpeech();
+    const utter = new window.SpeechSynthesisUtterance(text);
+    utter.rate = 0.96; utter.pitch = 1; utter.volume = 1;
+    utter.onstart = () => { if (activeSpeechIdRef.current === id) setIsReadingQuestion(true); };
+    utter.onend = utter.onerror = async () => {
+      if (activeSpeechIdRef.current !== id) return;
+      setIsReadingQuestion(false);
+      if (opts.restartRecordingAfter) {
+        try { await videoRecorderRef.current?.startRecording?.(); } catch {}
+      }
+    };
+    window.speechSynthesis.speak(utter);
+  };
+
+  const handleReadAgain = () => {
+    if (isReadingQuestion) { stopQuestionSpeech(); return; }
+    speakQuestion(session?.question, { restartRecordingAfter: enableVideo });
+  };
+
+  const start = async () => {
+    setLoadingStart(true); setMsg("");
+    try {
+      const res = await startInterview(domain, difficulty);
+      const data = res.data;
+      setSession({ session_id: data.session_id, domain: data.domain, difficulty: data.difficulty, question_index: data.question_index ?? 0, question: data.question || "", is_follow_up: !!data.is_follow_up });
+      setSecondsLeft(SECONDS_PER_QUESTION); setTimeUp(false); setFinalReport(null); setAnswer(""); setCommunication(null); autoSubmittedRef.current = false;
+    } catch (err) {
+      if (err?.response?.status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Failed to start interview");
+    } finally { setLoadingStart(false); }
+  };
+
+  const submitTextOnly = async (forcedAnswer = null) => {
+    if (!session?.session_id) return;
+    setLoadingSubmit(true); setMsg(""); stopQuestionSpeech();
+    const payloadAnswer = forcedAnswer ?? answer.trim();
+    try {
+      const res = await submitAnswer(session.session_id, payloadAnswer || "(No answer)");
+      setAnswer(""); applyInterviewResponse(res.data);
+    } catch (err) {
+      if (err?.response?.status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Submit failed");
+    } finally { setLoadingSubmit(false); }
+  };
+
+  useEffect(() => {
+    if (!timeUp || !session || finalReport || autoSubmittedRef.current) return;
+    autoSubmittedRef.current = true;
+    if (enableVideo) handleMainSubmit("(Time up)");
+    else submitTextOnly("(Time up) " + ((answer || "").trim() || "(No answer)"));
+  }, [timeUp]);
+
+  const submitAudio = async (blob) => {
+    if (!session?.session_id) { setMsg("Start an interview first."); return; }
+    setUploadingAudio(true); setMsg(""); stopQuestionSpeech();
+    try {
+      const form = new FormData();
+      form.append("session_id", session.session_id);
+      form.append("file", blob, "answer.webm");
+      const res = await api.post("/audio/submit-answer", form, { headers: { "Content-Type": "multipart/form-data" } });
+      setAnswer(""); applyInterviewResponse(res.data, { communicationData: res.data.communication || null, successPrefix: "Audio scored ✅" });
+    } catch (err) {
+      if (err?.response?.status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Audio submit failed");
+    } finally { setUploadingAudio(false); }
+  };
+
+  const submitVideoBlob = async (blob) => {
+    if (!session?.session_id) { setMsg("Start an interview first."); return; }
+    setUploadingVideo(true); setMsg("Uploading and analyzing video…"); stopQuestionSpeech();
+    try {
+      const form = new FormData();
+      form.append("session_id", session.session_id);
+      form.append("file", blob, "answer.webm");
+      const res = await api.post("/video/submit-answer", form, { headers: { "Content-Type": "multipart/form-data" } });
+      setAnswer(""); applyInterviewResponse(res.data, { communicationData: res.data.communication || null, successPrefix: "Video scored ✅" });
+    } catch (err) {
+      if (err?.response?.status === 401) return forceLogout();
+      setMsg(err?.response?.data?.detail || "Video submit failed");
+    } finally { setUploadingVideo(false); }
+  };
+
+  const handleMainSubmit = async (forcedPrefix = "") => {
+    if (enableVideo) {
+      if (!session?.session_id) { setMsg("Start an interview first."); return; }
+      const recorder = videoRecorderRef.current;
+      if (!recorder) { setMsg("Video recorder not ready."); return; }
+      setMsg(""); stopQuestionSpeech();
+      try {
+        const blob = await recorder.stopRecording();
+        if (!blob || blob.size === 0) { setMsg("No video recorded. Please try again."); return; }
+        await submitVideoBlob(blob);
+      } catch { setMsg(forcedPrefix ? `${forcedPrefix} Unable to submit video.` : "Unable to submit video."); }
+      return;
+    }
+    await submitTextOnly();
+  };
+
+  useEffect(() => {
+    if (!enableVideo) { videoRecorderRef.current?.stopPreview?.(); return; }
+    if (!session || finalReport) return;
+    const t = setTimeout(async () => {
+      try {
+        await videoRecorderRef.current?.startPreview?.();
+        window.scrollTo({ top: workspaceRef.current ? workspaceRef.current.getBoundingClientRect().top + window.scrollY - 12 : 160, behavior: "smooth" });
+      } catch { setMsg("Unable to start video preview."); }
+    }, 150);
+    return () => clearTimeout(t);
+  }, [enableVideo, session?.session_id, finalReport]);
+
+  useEffect(() => {
+    if (!session?.question || finalReport) return;
+    const key = [session.session_id, session.question_index, session.is_follow_up ? "follow" : "main", enableVideo ? "video" : "normal"].join("-");
+    if (spokenQuestionKeyRef.current === key) return;
+    spokenQuestionKeyRef.current = key;
+    const t = setTimeout(() => speakQuestion(session.question, { restartRecordingAfter: enableVideo }), 250);
+    return () => clearTimeout(t);
+  }, [session?.session_id, session?.question_index, session?.question, session?.is_follow_up, enableVideo, finalReport]);
+
+  useEffect(() => {
+    if (finalReport) { stopQuestionSpeech(); videoRecorderRef.current?.stopPreview?.(); }
+  }, [finalReport]);
+
+  useEffect(() => {
+    if (!resumeSessionId) return;
+    (async () => {
+      setLoadingResume(true); setMsg("");
+      try {
+        const res = await getInterviewState(resumeSessionId);
+        const data = res.data;
+        if (data.is_completed) { setFinalReport(data); return; }
+        if (!data.question) {
+          setSession({ session_id: data.session_id, domain: data.domain, difficulty: data.difficulty, question_index: data.current_question ?? data.current_question_index ?? 0, question: "", is_follow_up: false });
+        } else {
+          setSession({ session_id: data.session_id, domain: data.domain, difficulty: data.difficulty, question_index: data.question_index, question: data.question, is_follow_up: !!data.is_follow_up });
+        }
+      } catch (err) {
+        if (err?.response?.status === 401) return forceLogout();
+        setMsg(err?.response?.data?.detail || "Failed to resume interview"); setSp({});
+      } finally { setLoadingResume(false); }
+    })();
+  }, [resumeSessionId]);
+
+  const saveAndExit = () => setShowExitModal(true);
+  const cancelExit = () => setShowExitModal(false);
+  const confirmExit = () => { stopQuestionSpeech(); videoRecorderRef.current?.stopPreview?.(); nav("/dashboard"); };
+
+  /* ── RENDER ────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen text-white">
-      <div className="mx-auto max-w-5xl px-4 pt-16 pb-8">
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-5 py-2">
 
-        {/* ── Hero ─────────────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-16 text-center"
-        >
-          {/* Pill badge */}
-          <div className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.04]">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)" }} />
-            <span className="text-[11px] font-mono text-white/50 uppercase tracking-widest">Choose your mode</span>
+      {/* Loading resume */}
+      {loadingResume && (
+        <GlassCard className="p-8 text-center">
+          <div className="flex items-center justify-center gap-3 text-white/40 text-sm">
+            <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" strokeOpacity="0.2"/><path d="M12 2a10 10 0 0 1 10 10"/>
+            </svg>
+            Resuming interview…
           </div>
+        </GlassCard>
+      )}
 
-          <h1
-            className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4 leading-[1.08]"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            Interview{" "}
-            <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: "linear-gradient(135deg,#6d5fff,#00e5cc)" }}
-            >
-              Practice
-            </span>
-          </h1>
-          <p className="text-lg text-white/40 max-w-xl mx-auto leading-relaxed">
-            Three ways to sharpen your skills — pick a mode and start your session now.
-          </p>
+      {/* Setup screen */}
+      {!loadingResume && !session && (
+        <GlassCard className="p-7 sm:p-9">
+          <div className="absolute -right-12 top-0 w-48 h-48 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle,rgba(109,95,255,0.18),transparent)", filter: "blur(40px)" }} />
+          <div className="relative z-10 max-w-3xl">
+            <div className="section-eyebrow mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#6d5fff]" />
+              Domain Interview
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-white leading-[0.94] mb-4" style={{ fontFamily: "var(--font-display)" }}>
+              Start Your Domain Interview
+            </h2>
+            <p className="text-sm sm:text-base leading-7 text-white/50 mb-8 max-w-xl">
+              Choose your domain and difficulty, then begin a guided AI-powered interview session.
+            </p>
 
-          {/* Mini feat row */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
-            {FEATS.map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-center gap-2">
-                <div
-                  className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(109,95,255,0.12)", border: "1px solid rgba(109,95,255,0.22)" }}
-                >
-                  <Icon className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />
-                </div>
-                <div className="text-left">
-                  <p className="text-[11px] font-bold text-white/70 leading-none">{label}</p>
-                  <p className="text-[10px] text-white/35 leading-none mt-0.5">{desc}</p>
+            {/* Domain + Difficulty selectors */}
+            <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-6 mb-6 space-y-5">
+              {/* Domain chips */}
+              <div>
+                <label className="text-[11px] uppercase tracking-widest text-white/40 font-mono mb-3 block">Domain</label>
+                <div className="flex flex-wrap gap-2">
+                  {DOMAINS.map(d => (
+                    <motion.button key={d.value} whileTap={{ scale: 0.95 }} onClick={() => setDomain(d.value)}
+                      className={["px-5 py-2.5 rounded-full text-sm font-bold transition-all", domain === d.value ? "text-white" : "border border-white/[0.08] bg-white/[0.03] text-white/50 hover:text-white/80"].join(" ")}
+                      style={domain === d.value ? { background: "linear-gradient(135deg,#6d5fff,#00e5cc)", boxShadow: "0 0 20px rgba(109,95,255,0.35)" } : {}}>
+                      {d.label}
+                    </motion.button>
+                  ))}
                 </div>
               </div>
-            ))}
+
+              {/* Difficulty chips */}
+              <div>
+                <label className="text-[11px] uppercase tracking-widest text-white/40 font-mono mb-3 block">Difficulty</label>
+                <div className="flex flex-wrap gap-2">
+                  {DIFFICULTIES.map(d => (
+                    <motion.button key={d.value} whileTap={{ scale: 0.95 }} onClick={() => setDifficulty(d.value)}
+                      className={["px-5 py-2.5 rounded-full text-sm font-bold transition-all", difficulty === d.value ? "text-white" : "border border-white/[0.08] bg-white/[0.03] text-white/50 hover:text-white/80"].join(" ")}
+                      style={difficulty === d.value ? { background: `linear-gradient(135deg,${d.color}cc,${d.color}66)`, border: `1px solid ${d.color}50`, boxShadow: `0 0 16px ${d.color}40` } : {}}>
+                      {d.label}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Video toggle */}
+              <div className="flex items-center gap-3 pt-1">
+                <button onClick={() => setEnableVideo(v => !v)}
+                  className={["w-11 h-6 rounded-full border transition-all relative", enableVideo ? "bg-[#6d5fff] border-[#6d5fff]" : "bg-white/[0.06] border-white/[0.1]"].join(" ")}>
+                  <span className={["absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all", enableVideo ? "left-5" : "left-0.5"].join(" ")} />
+                </button>
+                <label className="text-sm text-white/65 cursor-pointer" onClick={() => setEnableVideo(v => !v)}>
+                  Enable video interview mode
+                </label>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <PrimaryButton onClick={start} disabled={loadingStart} className="px-8 py-3">
+                {loadingStart ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.2"/><path d="M12 2a10 10 0 0 1 10 10"/>
+                    </svg>
+                    Starting…
+                  </span>
+                ) : "Start Interview"}
+              </PrimaryButton>
+              <GhostButton onClick={() => nav("/interview")}>← Back to Modes</GhostButton>
+            </div>
+            {msg && <p className="mt-4 text-sm text-red-400">{msg}</p>}
           </div>
-        </motion.div>
+        </GlassCard>
+      )}
 
-        {/* ── Mode cards ───────────────────────────────────────── */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: {},
-            visible: { transition: { staggerChildren: 0.12 } },
-          }}
-          className="grid gap-5 sm:grid-cols-3"
-        >
-          {MODES.map((m) => {
-            const Icon = m.icon;
-            return (
-              <motion.div
-                key={m.id}
-                variants={{
-                  hidden: { opacity: 0, y: 28 },
-                  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
-                }}
-              >
-                <GlowCard glow={m.glow} onClick={() => navigate(m.route)} className="h-full flex flex-col p-6">
-                  {/* Tag + icon row */}
-                  <div className="flex items-start justify-between mb-5">
-                    <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: m.accentBg, border: `1px solid ${m.accentBorder}` }}
-                    >
-                      <Icon className="w-5 h-5" style={{ color: m.accent }} />
-                    </div>
-                    <span
-                      className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full font-mono"
-                      style={{ background: `${m.accent}18`, border: `1px solid ${m.accent}35`, color: m.accent }}
-                    >
-                      {m.tag}
+      {/* Final report */}
+      {!loadingResume && finalReport && (
+        <GlassCard className="p-7">
+          <div className="absolute -right-10 top-0 w-44 h-44 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle,rgba(0,229,204,0.2),transparent)", filter: "blur(40px)" }} />
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "rgba(0,229,204,0.15)", border: "1px solid rgba(0,229,204,0.3)" }}>
+                <svg viewBox="0 0 16 16" fill="none" stroke="#00e5cc" strokeWidth="1.8" className="w-5 h-5">
+                  <circle cx="8" cy="8" r="6"/><path d="M5 8l2 2 4-4"/>
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-extrabold text-white" style={{ fontFamily: "var(--font-display)" }}>Interview Completed</h2>
+                <p className="text-sm text-white/45">Session scored and summarized</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: "Total Score", value: finalReport.total_score ?? "—" },
+                { label: "Verdict", value: finalReport.verdict ?? "—" },
+                { label: "Avg Score", value: finalReport.average_score ?? "—" },
+                { label: "Domain", value: session?.domain?.toUpperCase() ?? "—" },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-xl border border-white/[0.08] bg-black/20 p-4">
+                  <p className="text-[10px] uppercase tracking-widest text-white/35 font-mono mb-2">{label}</p>
+                  <p className="text-xl font-extrabold text-white" style={{ fontFamily: "var(--font-display)" }}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {communication && <CommunicationCard communication={communication} />}
+
+            <div className="flex flex-wrap gap-3 mt-6">
+              <Link to={`/insights?session_id=${encodeURIComponent(session?.session_id || resumeSessionId || "")}`}>
+                <PrimaryButton>View Insights</PrimaryButton>
+              </Link>
+              <Link to={`/analytics?session_id=${encodeURIComponent(session?.session_id || resumeSessionId || "")}`}>
+                <GhostButton>View Analytics</GhostButton>
+              </Link>
+              <GhostButton onClick={() => { setSession(null); setFinalReport(null); setAnswer(""); setCommunication(null); }}>
+                Start New Interview
+              </GhostButton>
+            </div>
+
+            {finalReport?.detailed_report && (
+              <details className="mt-5">
+                <summary className="cursor-pointer text-sm text-white/50 hover:text-white/80 transition-colors">See raw report</summary>
+                <pre className="mt-3 overflow-auto rounded-xl border border-white/[0.08] bg-black/35 p-4 text-[11px] text-white/60 font-mono max-h-64">
+                  {JSON.stringify(finalReport, null, 2)}
+                </pre>
+              </details>
+            )}
+            {msg && <p className="mt-4 text-sm text-emerald-400">{msg}</p>}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Active interview workspace */}
+      {!loadingResume && session && !finalReport && (
+        <div ref={workspaceRef} className="space-y-4">
+          {/* Question card */}
+          <GlassCard className="overflow-hidden">
+            <div className="border-b border-white/[0.07] bg-white/[0.02] px-5 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                    <span className="text-3xl font-extrabold text-white" style={{ fontFamily: "var(--font-display)" }}>
+                      Q{session.is_follow_up ? `${(session.question_index ?? 0) + 1}.1` : (session.question_index ?? 0) + 1}
                     </span>
+                    {session.is_follow_up && (
+                      <span className="px-3 py-1 rounded-full border border-sky-400/30 bg-sky-400/10 text-xs font-semibold text-sky-300">Follow-up</span>
+                    )}
+                    {session.domain && (
+                      <span className="px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.04] text-[11px] text-white/45 font-mono uppercase">{session.domain}</span>
+                    )}
+                    {session.difficulty && (
+                      <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase" style={{
+                        background: session.difficulty === "easy" ? "rgba(0,229,204,0.12)" : session.difficulty === "hard" ? "rgba(255,77,136,0.12)" : "rgba(245,158,11,0.12)",
+                        border: session.difficulty === "easy" ? "1px solid rgba(0,229,204,0.3)" : session.difficulty === "hard" ? "1px solid rgba(255,77,136,0.3)" : "1px solid rgba(245,158,11,0.3)",
+                        color: session.difficulty === "easy" ? "#00e5cc" : session.difficulty === "hard" ? "#ff4d88" : "#f59e0b",
+                      }}>{session.difficulty}</span>
+                    )}
+                    {speechSupported && (
+                      <button onClick={handleReadAgain} className="px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.04] text-[11px] text-white/50 hover:text-white transition-all font-mono">
+                        {isReadingQuestion ? "Reading…" : "Read Again"}
+                      </button>
+                    )}
                   </div>
-
-                  <h2
-                    className="text-[18px] font-extrabold text-white mb-2"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    {m.title}
-                  </h2>
-                  <p className="text-[13px] text-white/45 leading-relaxed mb-5 flex-1">
-                    {m.desc}
+                  <p className="text-base leading-7 text-white/82 max-w-4xl">
+                    {session.question || "Loading question…"}
                   </p>
+                  <p className="mt-2 text-[11px] text-white/30 font-mono">
+                    {isReadingQuestion ? "AI is reading the question…" : "Question auto-reads on each new round. Use earphones for cleaner capture."}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                  {/* Topic chips */}
-                  <div className="flex flex-wrap gap-1.5 mb-5">
-                    {m.chips.map((c) => (
-                      <span
-                        key={c}
-                        className="text-[10px] font-mono text-white/35 px-2 py-1 rounded-full border border-white/[0.08] bg-white/[0.03]"
-                      >
-                        {c}
-                      </span>
-                    ))}
-                  </div>
+            {/* Answer panel */}
+            <div className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <h3 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Answer Panel</h3>
+                <div className="flex flex-wrap items-center gap-3">
+                  <CompactTimer secondsLeft={secondsLeft} totalSeconds={SECONDS_PER_QUESTION} isPaused={isPaused} onTogglePause={() => setIsPaused(p => !p)} />
 
-                  {/* Perks */}
-                  <div className="space-y-1.5 mb-5">
-                    {m.perks.map((p) => (
-                      <div key={p} className="flex items-center gap-2">
-                        <svg viewBox="0 0 12 12" fill="none" stroke={m.accent} strokeWidth="1.8" className="w-3 h-3 flex-shrink-0">
-                          <path d="m2 6 3 3 5-5" />
-                        </svg>
-                        <span className="text-[11.5px] text-white/50">{p}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {/* Video toggle inline */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <button onClick={() => setEnableVideo(v => !v)}
+                      className={["w-9 h-5 rounded-full border transition-all relative flex-shrink-0", enableVideo ? "bg-[#6d5fff] border-[#6d5fff]" : "bg-white/[0.06] border-white/[0.1]"].join(" ")}>
+                      <span className={["absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all", enableVideo ? "left-4" : "left-0.5"].join(" ")} />
+                    </button>
+                    <span className="text-xs text-white/50">Video</span>
+                  </label>
 
-                  {/* CTA */}
-                  <div
-                    className="flex items-center justify-between px-4 py-2.5 rounded-2xl group-hover:opacity-100 opacity-60 transition-opacity"
-                    style={{ background: m.accentBg, border: `1px solid ${m.accentBorder}` }}
+                  {communication && (
+                    <button onClick={() => setCommunication(null)} className="text-xs text-white/35 hover:text-white/60 transition-colors font-mono">Clear comm</button>
+                  )}
+
+                  <GhostButton onClick={saveAndExit} className="py-2 text-xs">Save & Exit</GhostButton>
+
+                  <PrimaryButton
+                    onClick={() => handleMainSubmit()}
+                    disabled={loadingSubmit || uploadingAudio || uploadingVideo || isReadingQuestion}
+                    className="py-2 px-5"
                   >
-                    <span className="text-[12px] font-bold" style={{ color: m.accent }}>
-                      Start Session
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5" style={{ color: m.accent }} />
+                    {isReadingQuestion ? "Reading…" : uploadingVideo ? "Uploading…" : loadingSubmit ? "Submitting…" : "Submit Answer"}
+                  </PrimaryButton>
+                </div>
+              </div>
+
+              {communication && <div className="mb-4"><CommunicationCard communication={communication} /></div>}
+
+              {enableVideo ? (
+                <div className="mt-2">
+                  <VideoRecorder ref={videoRecorderRef} autoStartPreview={true} onError={errMsg => setMsg(errMsg)} />
+                  <p className="mt-2 text-[11px] text-white/35 font-mono">Question is read first. Recording starts after the voice ends.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <AudioRecorder onRecorded={submitAudio} />
+                    {uploadingAudio && <p className="mt-2 text-xs text-white/45 font-mono">Uploading audio…</p>}
                   </div>
-                </GlowCard>
-              </motion.div>
-            );
-          })}
-        </motion.div>
+                  <textarea
+                    value={answer}
+                    onChange={e => setAnswer(e.target.value)}
+                    rows={6}
+                    placeholder="Type your answer here…"
+                    disabled={loadingSubmit || uploadingAudio || uploadingVideo}
+                    className="w-full rounded-2xl border border-white/[0.09] bg-white/[0.04] p-4 text-sm text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[rgba(109,95,255,0.5)] focus:bg-white/[0.06] focus:ring-2 focus:ring-[rgba(109,95,255,0.12)] transition-all resize-none font-body leading-7 disabled:opacity-50"
+                    style={{ fontFamily: "var(--font-body)" }}
+                  />
+                </>
+              )}
 
-        {/* ── Bottom tip ───────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="mt-10 text-center"
-        >
-          <p className="text-[12px] text-white/22 font-mono">
-            Sessions auto-save · Feedback available immediately · No limits
-          </p>
-        </motion.div>
-      </div>
+              {msg && (
+                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/08 px-4 py-3 text-sm text-emerald-300">
+                  {msg}
+                </motion.div>
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
-      <Footer />
-    </div>
+      {/* Exit modal */}
+      <AnimatePresence>
+        {showExitModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={cancelExit} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="relative z-10 w-full max-w-md rounded-[28px] border border-white/[0.1] bg-[#0d0d18] p-7 shadow-2xl"
+              style={{ backdropFilter: "blur(40px)" }}
+            >
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style={{ background: "rgba(109,95,255,0.15)", border: "1px solid rgba(109,95,255,0.3)" }}>
+                <svg viewBox="0 0 16 16" fill="none" stroke="#a78bfa" strokeWidth="1.8" className="w-5 h-5">
+                  <path d="M9 4l5 4-5 4M2 8h12"/><path d="M2 4v8"/>
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "var(--font-display)" }}>Save and exit?</h3>
+              <p className="text-sm text-white/55 mb-6">Your progress is saved. You can continue later from the dashboard.</p>
+              <div className="flex justify-end gap-3">
+                <GhostButton onClick={cancelExit}>Stay Here</GhostButton>
+                <PrimaryButton onClick={confirmExit}>Go to Dashboard</PrimaryButton>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

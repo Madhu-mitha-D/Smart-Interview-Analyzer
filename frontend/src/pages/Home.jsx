@@ -5,6 +5,7 @@ import SplineScene from "../components/SplineScene";
 import { ContainerScrollAnimation } from "../components/ui/ContainerScrollAnimation";
 import OrbitModes from "../components/ui/OrbitModes";
 import Footer from "../components/Footer";
+import { PrimaryButton, GhostButton } from "../components/Buttons";
 
 const SCENE_URL = "https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
 
@@ -177,34 +178,23 @@ function ModeCard({ title, desc, highlight, onClick, buttonLabel, accent }) {
       >
         {highlight}
       </div>
+
       <h3
         className="mb-3 text-xl font-bold text-white"
         style={{ fontFamily: "var(--font-display)" }}
       >
         {title}
       </h3>
+
       <p className="flex-1 text-sm leading-7 text-white/52">{desc}</p>
-      <motion.button
-        onClick={onClick}
+
+      <motion.div
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
-        className="btn-shimmer mt-6 flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white"
-        style={{
-          background: `linear-gradient(135deg, ${accent}cc, ${accent}88)`,
-          border: `1px solid ${accent}40`,
-        }}
+        className="mt-6 inline-flex"
       >
-        {buttonLabel}
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="h-3.5 w-3.5"
-        >
-          <path d="M3 8h10M9 4l4 4-4 4" />
-        </svg>
-      </motion.button>
+        <PrimaryButton onClick={onClick}>{buttonLabel}</PrimaryButton>
+      </motion.div>
     </GlassCard>
   );
 }
@@ -326,7 +316,10 @@ export default function Home() {
       <section ref={heroRef} className="relative overflow-hidden pt-28 pb-16">
         <div className="mx-auto max-w-7xl px-6 sm:px-8">
           <div className="grid min-h-[calc(100vh-10rem)] items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
-            <motion.div style={{ opacity: heroOpacity, y: heroY }} className="relative z-10">
+            <motion.div
+              style={{ opacity: heroOpacity, y: heroY }}
+              className="relative z-10"
+            >
               <Eyebrow>AI Interview Workspace</Eyebrow>
 
               <WordReveal
@@ -340,7 +333,8 @@ export default function Home() {
                 transition={{ duration: 0.7, delay: 0.45 }}
                 className="mt-6 max-w-xl text-base leading-8 text-white/52 sm:text-lg"
               >
-                Simulate interview rounds, review answer quality, and improve faster with structured AI-powered feedback.
+                Simulate interview rounds, review answer quality, and improve
+                faster with structured AI-powered feedback.
               </motion.p>
 
               <motion.div
@@ -349,37 +343,17 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="mt-8 flex flex-wrap gap-3"
               >
-                <motion.button
-                  onClick={() => nav("/interview")}
-                  whileHover={{ scale: 1.04, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="btn-shimmer flex items-center gap-2.5 rounded-full px-7 py-3.5 text-sm font-bold text-white"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #6d5fff 0%, #00e5cc 100%)",
-                    boxShadow: "0 0 30px rgba(109,95,255,0.4)",
-                  }}
-                >
-                  Start Interview
-                  <svg
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    className="h-3.5 w-3.5"
-                  >
-                    <path d="M4 8h8M8 4l4 4-4 4" />
-                  </svg>
-                </motion.button>
+                <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+                  <PrimaryButton onClick={() => nav("/interview")}>
+                    Start Interview
+                  </PrimaryButton>
+                </motion.div>
 
-                <motion.button
-                  onClick={() => nav("/dashboard")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex items-center gap-2.5 rounded-full border border-white/[0.12] bg-white/[0.04] px-7 py-3.5 text-sm font-semibold text-white/82 transition-all hover:bg-white/[0.08]"
-                >
-                  Open Dashboard
-                </motion.button>
+                <motion.div whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+                  <GhostButton onClick={() => nav("/dashboard")}>
+                    Open Dashboard
+                  </GhostButton>
+                </motion.div>
               </motion.div>
 
               <motion.div
@@ -454,7 +428,8 @@ export default function Home() {
                 delay={0.05}
               />
               <p className="mt-5 max-w-md text-sm leading-7 text-white/52 sm:text-base">
-                Move from guided interview practice to analytics and targeted improvement without switching tools.
+                Move from guided interview practice to analytics and targeted
+                improvement without switching tools.
               </p>
               <div className="mt-8 flex flex-wrap gap-2">
                 {[
@@ -507,7 +482,10 @@ export default function Home() {
                   className="group rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-md"
                 >
                   <div className="mb-3 flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+                    <div
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: accent }}
+                    />
                     <p
                       className="font-mono text-[10px] uppercase tracking-widest"
                       style={{ color: accent }}
@@ -539,7 +517,8 @@ export default function Home() {
               delay={0.05}
             />
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/48 sm:text-base">
-              Move from interview setup to analysis and insights in one seamless workspace.
+              Move from interview setup to analysis and insights in one seamless
+              workspace.
             </p>
           </div>
         }
@@ -596,7 +575,8 @@ export default function Home() {
             delay={0.04}
           />
           <p className="mt-5 max-w-md text-sm leading-7 text-white/48 sm:text-base">
-            Preparation becomes more effective when you can clearly see trends, strong areas, and weaknesses.
+            Preparation becomes more effective when you can clearly see trends,
+            strong areas, and weaknesses.
           </p>
           <div className="mt-10 space-y-7">
             {[
@@ -686,7 +666,10 @@ export default function Home() {
         </div>
       </motion.section>
 
-      <motion.section {...fadeUp} className="mx-auto mt-24 mb-10 max-w-7xl px-6 sm:px-8">
+      <motion.section
+        {...fadeUp}
+        className="mx-auto mt-24 mb-10 max-w-7xl px-6 sm:px-8"
+      >
         <GlassCard className="relative overflow-hidden px-8 py-16 text-center">
           <div
             className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -704,29 +687,22 @@ export default function Home() {
               delay={0.04}
             />
             <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-white/48 sm:text-base">
-              Practice smarter, track your growth, and walk into your next interview better prepared.
+              Practice smarter, track your growth, and walk into your next
+              interview better prepared.
             </p>
+
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <motion.button
-                onClick={() => nav("/interview")}
-                whileHover={{ scale: 1.04, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                className="btn-shimmer rounded-full px-8 py-4 text-sm font-bold text-white"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #6d5fff 0%, #00e5cc 100%)",
-                  boxShadow: "0 0 40px rgba(109,95,255,0.4)",
-                }}
-              >
-                Start Now — It's Free
-              </motion.button>
-              <motion.button
-                onClick={() => nav("/dashboard")}
-                whileHover={{ scale: 1.03, y: -1 }}
-                className="rounded-full border border-white/[0.12] bg-white/[0.04] px-8 py-4 text-sm font-semibold text-white/80 transition-all hover:bg-white/[0.08]"
-              >
-                View Dashboard
-              </motion.button>
+              <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+                <PrimaryButton onClick={() => nav("/interview")}>
+                  Start Now — It's Free
+                </PrimaryButton>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.03, y: -1 }}>
+                <GhostButton onClick={() => nav("/dashboard")}>
+                  View Dashboard
+                </GhostButton>
+              </motion.div>
             </div>
           </div>
         </GlassCard>
