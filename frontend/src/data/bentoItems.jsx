@@ -1,0 +1,106 @@
+import {
+  TrendingUp,
+  CheckCircle,
+  Video,
+  Globe,
+  Brain,
+  FileText,
+  Code2,
+  BarChart3,
+  UserRound,
+} from "lucide-react";
+
+export const dashboardBentoItems = [
+  {
+    title: "Analytics Dashboard",
+    meta: "Live",
+    description: "Track interview performance, trends, and growth with AI-powered insights.",
+    icon: <TrendingUp className="h-4 w-4" />,
+    status: "Overview",
+    tags: ["Reports", "Tracking", "AI"],
+    colSpan: 2,
+    accent: "#6d5fff",
+  },
+  {
+    title: "Completed Sessions",
+    meta: "Progress",
+    description: "See finished interview rounds and measure your consistency over time.",
+    icon: <CheckCircle className="h-4 w-4" />,
+    status: "Updated",
+    tags: ["Sessions", "Progress"],
+    accent: "#00e5cc",
+  },
+  {
+    title: "Video Analysis",
+    meta: "Media",
+    description: "Review recorded practice sessions and improve communication quality.",
+    icon: <Video className="h-4 w-4" />,
+    status: "Enabled",
+    tags: ["Video", "Feedback"],
+    colSpan: 2,
+    accent: "#a78bfa",
+  },
+  {
+    title: "Global Access",
+    meta: "Cloud",
+    description: "Access your interview workspace and analytics anywhere.",
+    icon: <Globe className="h-4 w-4" />,
+    status: "Beta",
+    tags: ["Cloud", "Sync"],
+    accent: "#ff4d88",
+  },
+];
+
+export const interviewBentoItems = [
+  {
+    title: "Domain Interview",
+    meta: "Core",
+    description: "Practice technical and HR rounds with guided domain-based flows.",
+    icon: <Brain className="h-4 w-4" />,
+    status: "Recommended",
+    tags: ["HR", "Java", "DBMS", "AI"],
+    colSpan: 2,
+    accent: "#6d5fff",
+  },
+  {
+    title: "Resume Interview",
+    meta: "Personalized",
+    description: "Generate questions from your projects, skills, and experience.",
+    icon: <FileText className="h-4 w-4" />,
+    status: "Smart",
+    tags: ["Projects", "Skills"],
+    accent: "#00e5cc",
+  },
+  {
+    title: "Coding Interview",
+    meta: "Technical",
+    description: "Solve problems in a focused workspace built for coding rounds.",
+    icon: <Code2 className="h-4 w-4" />,
+    status: "Practice",
+    tags: ["Coding", "DSA"],
+    colSpan: 2,
+    accent: "#a78bfa",
+  },
+  {
+    title: "Interview Insights",
+    meta: "Review",
+    description: "Understand strengths, weak areas, and next improvement steps.",
+    icon: <BarChart3 className="h-4 w-4" />,
+    status: "AI Feedback",
+    tags: ["Insights", "Growth"],
+    accent: "#ff4d88",
+  },
+];
+
+export const profileBentoItems = [
+  {
+    title: "Profile Overview",
+    meta: "User",
+    description: "Manage your information, experience, and interview preferences.",
+    icon: <UserRound className="h-4 w-4" />,
+    status: "Personal",
+    tags: ["Profile", "Settings"],
+    colSpan: 2,
+    accent: "#6d5fff",
+  },
+];

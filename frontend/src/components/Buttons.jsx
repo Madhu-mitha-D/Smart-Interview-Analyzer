@@ -1,61 +1,83 @@
-import { motion } from "framer-motion";
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva } from "class-variance-authority";
+import { cn } from "../lib/utils";
 
-export function PrimaryButton({ className = "", children, disabled, ...props }) {
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground",
+        link:
+          "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+const Button = React.forwardRef(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+
+Button.displayName = "Button";
+
+function PrimaryButton({ children, className = "", ...props }) {
   return (
-    <motion.button
-      whileHover={!disabled ? { scale: 1.03, y: -1 } : {}}
-      whileTap={!disabled ? { scale: 0.97 } : {}}
-      disabled={disabled}
-      className={[
-        "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white btn-shimmer",
-        "disabled:opacity-50 disabled:cursor-not-allowed transition-all",
-        className,
-      ].join(" ")}
-      style={!disabled ? {
-        background: "linear-gradient(135deg, #6d5fff 0%, #00e5cc 100%)",
-        boxShadow: "0 0 20px rgba(109,95,255,0.3)",
-      } : { background: "rgba(109,95,255,0.3)" }}
+    <button
       {...props}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
+        "bg-[linear-gradient(135deg,#6d5fff_0%,#00e5cc_100%)] shadow-[0_0_30px_rgba(109,95,255,0.28)]",
+        className
+      )}
     >
       {children}
-    </motion.button>
+    </button>
   );
 }
 
-export function GhostButton({ className = "", children, disabled, ...props }) {
+function GhostButton({ children, className = "", ...props }) {
   return (
-    <motion.button
-      whileHover={!disabled ? { scale: 1.02 } : {}}
-      whileTap={!disabled ? { scale: 0.97 } : {}}
-      disabled={disabled}
-      className={[
-        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white/70",
-        "border border-white/[0.09] bg-white/[0.04] hover:bg-white/[0.08] hover:text-white",
-        "transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-        className,
-      ].join(" ")}
+    <button
       {...props}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white/80 transition-all duration-200",
+        "hover:bg-white/[0.08] hover:text-white active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
+        className
+      )}
     >
       {children}
-    </motion.button>
+    </button>
   );
 }
 
-export function DangerButton({ className = "", children, disabled, ...props }) {
-  return (
-    <motion.button
-      whileHover={!disabled ? { scale: 1.02 } : {}}
-      whileTap={!disabled ? { scale: 0.97 } : {}}
-      disabled={disabled}
-      className={[
-        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-red-300",
-        "border border-red-500/25 bg-red-500/10 hover:bg-red-500/20",
-        "transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-        className,
-      ].join(" ")}
-      {...props}
-    >
-      {children}
-    </motion.button>
-  );
-}
+export { Button, buttonVariants, PrimaryButton, GhostButton };

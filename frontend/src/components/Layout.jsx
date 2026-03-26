@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "./Navbar";
-import MeshBackground from "./MeshBackground";
+import BeamBackground from "./BeamBackground";
 
 export default function Layout() {
   const location = useLocation();
@@ -22,9 +22,8 @@ export default function Layout() {
 
   return (
     <div className="relative min-h-screen text-white">
-      {/* Background always shown */}
-      {!isHome && <MeshBackground />}
-      {!isHome && <div className="grain" />}
+      <BeamBackground />
+      <div className="grain" />
 
       <div className="relative z-10">
         <Navbar title={routeTitle} />
@@ -36,7 +35,9 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
             transition={{ duration: 0.24, ease: "easeOut" }}
-            className={isHome ? "" : "mx-auto max-w-7xl px-5 sm:px-7 pt-24 pb-10"}
+            className={
+              isHome ? "" : "mx-auto max-w-7xl px-5 sm:px-7 pt-24 pb-10"
+            }
           >
             <Outlet />
           </motion.div>

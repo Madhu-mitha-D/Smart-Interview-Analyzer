@@ -1,278 +1,161 @@
+import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState, useCallback } from "react";
-
-const NAV_LINKS = [
-  { to: "/",           label: "Home",      key: "home" },
-  { to: "/dashboard",  label: "Dashboard", key: "dashboard" },
-  { to: "/interview",  label: "Interview", key: "interview" },
-  { to: "/insights",   label: "Insights",  key: "insights" },
-  { to: "/analytics",  label: "Analytics", key: "analytics" },
-  { to: "/profile",    label: "Profile",   key: "profile" },
-];
-
-/* ── Animated hamburger/X toggle (header-2 style) ─────────── */
-function MenuToggleIcon({ open }) {
-  return (
-    <svg
-      strokeWidth={2.5}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 32 32"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-5 h-5"
-      style={{
-        transform: open ? "rotate(-45deg)" : "rotate(0deg)",
-        transition: "transform 300ms ease-in-out",
-      }}
-    >
-      <path
-        style={{
-          strokeDasharray: open ? "20 300" : "12 63",
-          strokeDashoffset: open ? "-32.42px" : "0",
-          transition: "stroke-dasharray 300ms, stroke-dashoffset 300ms",
-        }}
-        d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
-      />
-      <path d="M7 16 27 16" />
-    </svg>
-  );
-}
+import { Button, buttonVariants } from "./ui/button";
+import { cn } from "../lib/utils";
+import { MenuToggleIcon } from "./ui/menu-toggle-icon";
+import { useScroll } from "./ui/use-scroll";
 
 export default function Navbar({ title = "Home" }) {
-  const nav = useNavigate();
-  const loc = useLocation();
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [visible, setVisible] = useState(true);
-  const lastY = useRef(0);
+  const [open, setOpen] = React.useState(false);
+  const scrolled = useScroll(10);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
   const isAuthed = Boolean(token);
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    nav("/login", { replace: true });
+  const links = [
+    { label: "Home", href: "/" },
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Interview", href: "/interview" },
+    { label: "Insights", href: "/insights" },
+    { label: "Analytics", href: "/analytics" },
+    { label: "Profile", href: "/profile" },
+  ];
+
+  const isActive = (href) => {
+    if (href === "/") return location.pathname === "/";
+    return location.pathname.startsWith(href);
   };
 
-  // Scroll detection — header-2 style (shrinks + floats on scroll)
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-      setScrolled(y > 10);
-      if (y <= 16) { setVisible(true); }
-      else if (y > lastY.current + 8) { setVisible(false); setOpen(false); }
-      else if (y < lastY.current - 8) { setVisible(true); }
-      lastY.current = y;
-    };
-    lastY.current = window.scrollY;
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  React.useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
 
-  // Lock body when mobile menu open
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
-  const activeKey = NAV_LINKS.find(l =>
-    l.key === "home" ? loc.pathname === "/" : loc.pathname.startsWith(l.to)
-  )?.key;
+  React.useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    navigate("/login", { replace: true });
+  };
 
   return (
-    <>
-      {/* ── Floating pill navbar ───────────────────────────── */}
-      <motion.header
-        animate={{ y: visible ? 0 : -90, opacity: visible ? 1 : 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        className="fixed top-0 inset-x-0 z-50 flex justify-center"
-        style={{ paddingTop: scrolled ? 12 : 20, paddingLeft: 16, paddingRight: 16 }}
-      >
-        <nav
-          className="w-full transition-all duration-300 ease-out"
-          style={{
-            maxWidth: scrolled ? 840 : 1080,
-            borderRadius: 999,
-            border: "1px solid",
-            borderColor: scrolled ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
-            background: scrolled
-              ? "rgba(5,5,18,0.92)"
-              : "rgba(5,5,18,0.5)",
-            backdropFilter: "blur(32px) saturate(180%)",
-            WebkitBackdropFilter: "blur(32px) saturate(180%)",
-            boxShadow: scrolled ? "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(109,95,255,0.08)" : "none",
-          }}
-        >
-          <div
-            className="flex items-center justify-between gap-3 transition-all duration-300"
-            style={{ padding: scrolled ? "8px 16px" : "10px 20px" }}
-          >
-            {/* Brand */}
-            <Link to="/" className="flex items-center gap-2.5 flex-shrink-0" onClick={() => setOpen(false)}>
-              <div
-                className="rounded-xl flex items-center justify-center relative overflow-hidden flex-shrink-0 transition-all duration-300"
-                style={{
-                  width: scrolled ? 30 : 34,
-                  height: scrolled ? 30 : 34,
-                  borderRadius: scrolled ? 10 : 12,
-                  background: "linear-gradient(135deg, #6d5fff 0%, #00e5cc 100%)",
-                  boxShadow: "0 0 16px rgba(109,95,255,0.5)",
-                }}
-              >
-                <span className="text-[10px] font-black text-white tracking-tight select-none">SI</span>
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
-              </div>
-              <span
-                className="font-bold text-white/90 transition-all duration-300 hidden sm:block"
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: scrolled ? 13 : 14,
-                  letterSpacing: "-0.2px",
-                }}
-              >
-                Smart Interview
-              </span>
-            </Link>
-
-            {/* Desktop links */}
-            {isAuthed && (
-              <div className="hidden md:flex items-center">
-                {NAV_LINKS.map((link) => {
-                  const isActive = activeKey === link.key;
-                  return (
-                    <Link
-                      key={link.key}
-                      to={link.to}
-                      className="relative px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-150"
-                      style={{
-                        color: isActive ? "#fff" : "rgba(237,237,245,0.52)",
-                        background: isActive ? "rgba(109,95,255,0.18)" : "transparent",
-                        border: isActive ? "1px solid rgba(109,95,255,0.4)" : "1px solid transparent",
-                      }}
-                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = "rgba(237,237,245,0.88)"; }}
-                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = "rgba(237,237,245,0.52)"; }}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Right side */}
-            <div className="flex items-center gap-2">
-              {isAuthed ? (
-                <>
-                  {/* Page indicator pill */}
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.07] bg-white/[0.03]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: "navPing 2.2s ease-in-out infinite" }} />
-                    <span className="text-[10px] text-white/35 font-mono uppercase tracking-widest">{title}</span>
-                  </div>
-
-                  <button
-                    onClick={logout}
-                    className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-white/[0.09] bg-white/[0.04] text-[13px] text-white/60 font-medium hover:bg-white/[0.09] hover:text-white/90 transition-all"
-                  >
-                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-3 h-3">
-                      <path d="M5 13H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h3"/>
-                      <path d="M10 10l3-3-3-3"/>
-                      <path d="M13 7H5"/>
-                    </svg>
-                    Logout
-                  </button>
-
-                  {/* Mobile burger */}
-                  <button
-                    onClick={() => setOpen(!open)}
-                    className="md:hidden flex items-center justify-center w-9 h-9 rounded-full border border-white/[0.1] bg-white/[0.05] text-white/70 hover:text-white transition-colors"
-                  >
-                    <MenuToggleIcon open={open} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="px-4 py-2 rounded-full border border-white/[0.09] bg-white/[0.04] text-[13px] text-white/75 font-medium hover:bg-white/[0.08] hover:text-white transition-all">
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="px-4 py-2 rounded-full text-[13px] font-bold text-white btn-shimmer transition-all"
-                    style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)", boxShadow: "0 0 16px rgba(109,95,255,0.3)" }}
-                  >
-                    Get Started
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </nav>
-      </motion.header>
-
-      {/* ── Mobile menu drawer ─────────────────────────────── */}
-      <AnimatePresence>
-        {open && isAuthed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-40 md:hidden"
-            style={{ background: "rgba(3,3,10,0.9)", backdropFilter: "blur(16px)" }}
-          >
-            {/* Spacer for navbar */}
-            <div style={{ height: 72 }} />
-
-            <motion.div
-              initial={{ opacity: 0, y: -12, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="flex h-full w-full flex-col justify-between gap-2 p-5 overflow-y-auto"
-            >
-              <div className="grid grid-cols-2 gap-2">
-                {NAV_LINKS.map((link) => {
-                  const isActive = activeKey === link.key;
-                  return (
-                    <Link
-                      key={link.key}
-                      to={link.to}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-all"
-                      style={{
-                        background: isActive ? "rgba(109,95,255,0.2)" : "rgba(255,255,255,0.04)",
-                        border: `1px solid ${isActive ? "rgba(109,95,255,0.4)" : "rgba(255,255,255,0.08)"}`,
-                        color: isActive ? "#fff" : "rgba(237,237,245,0.6)",
-                      }}
-                    >
-                      {isActive && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)" }} />}
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="flex flex-col gap-3 pb-8">
-                <button
-                  onClick={() => { logout(); setOpen(false); }}
-                  className="w-full py-3.5 rounded-2xl border border-white/[0.08] bg-white/[0.04] text-sm font-semibold text-white/65"
-                >
-                  Logout
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <style>{`
-        @keyframes navPing {
-          0%,100% { opacity:1; transform:scale(1); }
-          50% { opacity:0.5; transform:scale(1.4); }
+    <header
+      className={cn(
+        "sticky top-0 z-50 mx-auto mt-3 w-[calc(100%-20px)] max-w-5xl rounded-2xl border border-white/10 bg-black/35 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl transition-all duration-300 ease-out",
+        {
+          "bg-black/55 border-white/12 shadow-[0_16px_50px_rgba(0,0,0,0.36)]":
+            scrolled && !open,
+          "bg-black/70": open,
         }
-      `}</style>
-    </>
+      )}
+    >
+      <nav
+        className={cn(
+          "flex h-14 w-full items-center justify-between px-4 md:h-12 md:transition-all md:ease-out",
+          {
+            "md:px-2": scrolled,
+          }
+        )}
+      >
+        <Link
+          to="/"
+          id="navbar-brand-anchor"
+          className="flex items-center gap-3"
+        >
+          <div className="grid h-9 w-9 place-items-center rounded-2xl border border-white/12 bg-white/[0.05]">
+            <span className="text-[11px] font-semibold tracking-[0.18em] text-white">
+              SIA
+            </span>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white">
+              Smart Interview Analyzer
+            </p>
+            <p className="truncate text-xs text-white/38">{title}</p>
+          </div>
+        </Link>
+
+        <div className="hidden items-center gap-2 md:flex">
+          {isAuthed &&
+            links.map((link, i) => (
+              <Link
+                key={i}
+                to={link.href}
+                className={buttonVariants({
+                  variant: isActive(link.href) ? "outline" : "ghost",
+                })}
+              >
+                {link.label}
+              </Link>
+            ))}
+
+          {isAuthed && (
+            <Button variant="outline" onClick={logout}>
+              Logout
+            </Button>
+          )}
+        </div>
+
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => setOpen(!open)}
+          className="md:hidden"
+        >
+          <MenuToggleIcon open={open} className="size-5" duration={300} />
+        </Button>
+      </nav>
+
+      <div
+        className={cn(
+          "bg-background/90 fixed top-14 right-0 bottom-0 left-0 z-50 flex flex-col overflow-hidden border-y md:hidden",
+          open ? "block" : "hidden"
+        )}
+      >
+        <div
+          data-slot={open ? "open" : "closed"}
+          className={cn(
+            "data-[slot=open]:animate-in data-[slot=open]:zoom-in-95 data-[slot=closed]:animate-out data-[slot=closed]:zoom-out-95 ease-out",
+            "flex h-full w-full flex-col justify-between gap-y-2 p-4"
+          )}
+        >
+          <div className="grid gap-y-2">
+            {isAuthed &&
+              links.map((link) => (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  className={buttonVariants({
+                    variant: isActive(link.href) ? "outline" : "ghost",
+                    className: "justify-start",
+                  })}
+                >
+                  {link.label}
+                </Link>
+              ))}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {isAuthed && (
+              <Button variant="outline" className="w-full" onClick={logout}>
+                Logout
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
   );
 }
