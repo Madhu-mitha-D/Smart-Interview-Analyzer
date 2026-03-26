@@ -1,39 +1,39 @@
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import SplineScene from "../components/SplineScene";
 import { ContainerScrollAnimation } from "../components/ui/ContainerScrollAnimation";
 import OrbitModes from "../components/ui/OrbitModes";
-import Footer from "../components/Footer";
+import { InteractiveRobotSpline } from "../components/ui/interactive-3d-robot";
 import { PrimaryButton, GhostButton } from "../components/Buttons";
 
-const SCENE_URL = "https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
+const ROBOT_SCENE_URL =
+  "https://prod.spline.design/PyzDhpQ9E5f1E3MT/scene.splinecode";
 
 const orbitItems = [
   {
-    type: "video",
-    src: "/videos/interview-demo.mp4",
+    type: "image",
+    src: "/src/assets/images/image.png",
     eyebrow: "Mock Interview",
     title: "Practice realistic rounds",
     desc: "Answer domain questions in a guided flow designed to simulate a real interview experience.",
   },
   {
-    type: "video",
-    src: "/videos/resume-demo.mp4",
+    type: "image",
+    src: "/src/assets/images/image1.png",
     eyebrow: "Resume Mode",
     title: "Get personalized questions",
-    desc: "Generate targeted interview questions from your skills, projects, and profile.",
+    desc: "Generate tailored questions from your skills, projects, and profile.",
   },
   {
-    type: "video",
-    src: "/videos/coding-demo.mp4",
+    type: "image",
+    src: "/src/assets/images/image2.png",
     eyebrow: "Coding Mode",
     title: "Solve in a focused workspace",
     desc: "Practice interview-style coding problems in a clean, distraction-free interface.",
   },
   {
-    type: "video",
-    src: "/videos/analytics-demo.mp4",
+    type: "image",
+    src: "/src/assets/images/image3.png",
     eyebrow: "Analytics",
     title: "Track progress over time",
     desc: "See score trends, patterns, and insights across repeated sessions.",
@@ -73,7 +73,7 @@ function Eyebrow({ children }) {
       transition={{ duration: 0.5 }}
       className="section-eyebrow"
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-[#6d5fff]" />
+      <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
       {children}
     </motion.div>
   );
@@ -119,8 +119,7 @@ function GlassCard({ children, className = "", hoverGlow = true }) {
       }}
       className={[
         "group relative overflow-hidden rounded-[28px] border border-white/[0.09]",
-        "bg-gradient-to-b from-white/[0.055] to-white/[0.018]",
-        "shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-2xl",
+        "bg-[#141416]/55 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.3)]",
         className,
       ].join(" ")}
     >
@@ -129,7 +128,7 @@ function GlassCard({ children, className = "", hoverGlow = true }) {
         <div
           className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           style={{
-            background: `radial-gradient(400px circle at ${glow.x}% ${glow.y}%, rgba(109,95,255,0.1), transparent 40%)`,
+            background: `radial-gradient(400px circle at ${glow.x}% ${glow.y}%, rgba(255,255,255,0.05), transparent 40%)`,
           }}
         />
       )}
@@ -138,7 +137,7 @@ function GlassCard({ children, className = "", hoverGlow = true }) {
   );
 }
 
-function StatBadge({ value, label, accent = "#6d5fff" }) {
+function StatBadge({ value, label }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.85 }}
@@ -148,13 +147,8 @@ function StatBadge({ value, label, accent = "#6d5fff" }) {
       className="text-center"
     >
       <div
-        className="mb-1 text-3xl font-black sm:text-4xl"
-        style={{
-          fontFamily: "var(--font-display)",
-          background: `linear-gradient(135deg, #fff 0%, ${accent} 100%)`,
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-        }}
+        className="mb-1 text-3xl font-black text-white sm:text-4xl"
+        style={{ fontFamily: "var(--font-display)" }}
       >
         <Counter to={value} />+
       </div>
@@ -165,17 +159,10 @@ function StatBadge({ value, label, accent = "#6d5fff" }) {
   );
 }
 
-function ModeCard({ title, desc, highlight, onClick, buttonLabel, accent }) {
+function ModeCard({ title, desc, highlight, onClick, buttonLabel }) {
   return (
     <GlassCard className="flex h-full flex-col p-6">
-      <div
-        className="mb-5 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest"
-        style={{
-          background: `${accent}18`,
-          border: `1px solid ${accent}40`,
-          color: accent,
-        }}
-      >
+      <div className="mb-5 inline-flex rounded-full border border-white/[0.12] bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white/70">
         {highlight}
       </div>
 
@@ -216,7 +203,7 @@ function AnalyticsMockup() {
             Interview Progress
           </h3>
           <p className="mt-2 max-w-xs text-sm leading-7 text-white/50">
-            Track score trends, identify stronger domains, spot weak areas.
+            Track score trends, identify stronger domains, and spot weak areas.
           </p>
         </div>
         <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-white/40">
@@ -257,11 +244,7 @@ function AnalyticsMockup() {
                   delay: i * 0.08,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                className="w-full rounded-t-xl"
-                style={{
-                  background:
-                    "linear-gradient(to top, rgba(109,95,255,0.9), rgba(0,229,204,0.7))",
-                }}
+                className="w-full rounded-t-xl bg-white/70"
               />
               <span className="font-mono text-[10px] text-white/30">
                 S{i + 1}
@@ -313,9 +296,9 @@ export default function Home() {
 
   return (
     <div className="relative z-10 min-h-screen text-white">
-      <section ref={heroRef} className="relative overflow-hidden pt-28 pb-16">
+      <section ref={heroRef} className="relative overflow-hidden pt-2 pb-16">
         <div className="mx-auto max-w-7xl px-6 sm:px-8">
-          <div className="grid min-h-[calc(100vh-10rem)] items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
+          <div className="grid min-h-[calc(100vh-8rem)] items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
             <motion.div
               style={{ opacity: heroOpacity, y: heroY }}
               className="relative z-10"
@@ -343,13 +326,19 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="mt-8 flex flex-wrap gap-3"
               >
-                <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+                <motion.div
+                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                >
                   <PrimaryButton onClick={() => nav("/interview")}>
                     Start Interview
                   </PrimaryButton>
                 </motion.div>
 
-                <motion.div whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}>
+                <motion.div
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                >
                   <GhostButton onClick={() => nav("/dashboard")}>
                     Open Dashboard
                   </GhostButton>
@@ -387,37 +376,45 @@ export default function Home() {
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{
                 duration: 0.9,
                 ease: [0.16, 1, 0.3, 1],
                 delay: 0.15,
               }}
-              className="relative h-[380px] overflow-hidden sm:h-[500px] lg:h-[680px]"
+              className="relative h-[460px] sm:h-[560px] lg:h-[700px]"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(109,95,255,0.06),transparent_60%)] blur-3xl" />
-              <div className="absolute inset-x-[-8%] bottom-[-3%] top-[-1%]">
-                <SplineScene scene={SCENE_URL} className="h-full w-full" />
+              <div className="pointer-events-none absolute inset-0 rounded-[32px] bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent_65%)] blur-2xl" />
+              <div className="absolute inset-0">
+                <InteractiveRobotSpline
+                  scene={ROBOT_SCENE_URL}
+                  className="h-full w-full"
+                />
               </div>
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-[#03030a]" />
             </motion.div>
           </div>
         </div>
       </section>
 
-      <motion.section {...fadeUp} className="mx-auto mb-24 max-w-7xl px-6 sm:px-8">
+      <motion.section
+        {...fadeUp}
+        className="mx-auto mb-24 max-w-7xl px-6 sm:px-8"
+      >
         <GlassCard className="px-8 py-10">
           <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
-            <StatBadge value={500} label="Practice Sessions" accent="#6d5fff" />
-            <StatBadge value={12} label="Interview Domains" accent="#00e5cc" />
-            <StatBadge value={98} label="Questions Bank" accent="#a78bfa" />
-            <StatBadge value={40} label="Coding Problems" accent="#ff4d88" />
+            <StatBadge value={500} label="Practice Sessions" />
+            <StatBadge value={12} label="Interview Domains" />
+            <StatBadge value={98} label="Questions Bank" />
+            <StatBadge value={40} label="Coding Problems" />
           </div>
         </GlassCard>
       </motion.section>
 
-      <motion.section {...fadeUp} className="mx-auto mb-28 max-w-7xl px-6 sm:px-8">
+      <motion.section
+        {...fadeUp}
+        className="mx-auto mb-28 max-w-7xl px-6 sm:px-8"
+      >
         <GlassCard className="p-8 lg:p-12">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
@@ -454,27 +451,23 @@ export default function Home() {
                   eyebrow: "Practice",
                   title: "Mock interviews across multiple domains",
                   desc: "Practice technical and non-technical rounds with a structured interview flow.",
-                  accent: "#6d5fff",
                 },
                 {
                   eyebrow: "Personalization",
                   title: "Resume-based personalized questions",
                   desc: "Generate tailored questions from your skills, projects, and background.",
-                  accent: "#00e5cc",
                 },
                 {
                   eyebrow: "Coding",
                   title: "Coding rounds with focused workspace",
                   desc: "Solve problems in an IDE-style setup built for interview preparation.",
-                  accent: "#a78bfa",
                 },
                 {
                   eyebrow: "Improvement",
                   title: "Progress insights that guide improvement",
                   desc: "Identify patterns, weaker topics, and communication gaps across sessions.",
-                  accent: "#ff4d88",
                 },
-              ].map(({ eyebrow, title, desc, accent }) => (
+              ].map(({ eyebrow, title, desc }) => (
                 <motion.div
                   key={eyebrow}
                   whileHover={{ y: -3, scale: 1.01 }}
@@ -482,14 +475,8 @@ export default function Home() {
                   className="group rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-md"
                 >
                   <div className="mb-3 flex items-center gap-2">
-                    <div
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: accent }}
-                    />
-                    <p
-                      className="font-mono text-[10px] uppercase tracking-widest"
-                      style={{ color: accent }}
-                    >
+                    <div className="h-1.5 w-1.5 rounded-full bg-white/60" />
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-white/55">
                       {eyebrow}
                     </p>
                   </div>
@@ -525,7 +512,7 @@ export default function Home() {
       >
         <div className="relative h-full w-full overflow-hidden rounded-[22px]">
           <video
-            src="/videos/main-flow.mp4"
+            src="/src/assets/videos/2026-03-26 22-33-44.mp4"
             autoPlay
             muted
             loop
@@ -601,13 +588,7 @@ export default function Home() {
                 transition={{ duration: 0.5, delay: i * 0.12 }}
                 className="group flex gap-4"
               >
-                <div
-                  className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-bold text-white"
-                  style={{
-                    background: "linear-gradient(135deg, #6d5fff44, #00e5cc33)",
-                    border: "1px solid rgba(109,95,255,0.3)",
-                  }}
-                >
+                <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] font-mono text-[12px] font-bold text-white">
                   {i + 1}
                 </div>
                 <div>
@@ -626,7 +607,10 @@ export default function Home() {
         <AnalyticsMockup />
       </motion.section>
 
-      <motion.section {...fadeUp} className="mx-auto mt-28 max-w-7xl px-6 sm:px-8">
+      <motion.section
+        {...fadeUp}
+        className="mx-auto mt-28 max-w-7xl px-6 sm:px-8"
+      >
         <div className="mb-10 text-center">
           <Eyebrow>Interview Modes</Eyebrow>
           <WordReveal
@@ -642,7 +626,6 @@ export default function Home() {
           <ModeCard
             title="Domain Interview"
             highlight="Adaptive Practice"
-            accent="#6d5fff"
             desc="Practice core subjects such as HR, Java, DBMS, and AI in a guided interview flow."
             buttonLabel="Start Domain"
             onClick={() => nav("/interview/domain")}
@@ -650,7 +633,6 @@ export default function Home() {
           <ModeCard
             title="Resume Interview"
             highlight="Personalized Questions"
-            accent="#00e5cc"
             desc="Generate tailored questions from your resume, skills, and project experience."
             buttonLabel="Start Resume"
             onClick={() => nav("/interview/resume")}
@@ -658,7 +640,6 @@ export default function Home() {
           <ModeCard
             title="Coding Interview"
             highlight="Timed Coding Rounds"
-            accent="#a78bfa"
             desc="Solve interview-style programming problems in a focused coding environment."
             buttonLabel="Start Coding"
             onClick={() => nav("/interview/coding")}
@@ -675,7 +656,7 @@ export default function Home() {
             className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{
               background:
-                "radial-gradient(ellipse, rgba(109,95,255,0.18) 0%, transparent 70%)",
+                "radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 70%)",
               filter: "blur(30px)",
             }}
           />
@@ -692,9 +673,12 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }}>
+              <motion.div
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.97 }}
+              >
                 <PrimaryButton onClick={() => nav("/interview")}>
-                  Start Now — It's Free
+                  Start Now — It&apos;s Free
                 </PrimaryButton>
               </motion.div>
 
@@ -708,7 +692,6 @@ export default function Home() {
         </GlassCard>
       </motion.section>
 
-      <Footer />
     </div>
   );
 }

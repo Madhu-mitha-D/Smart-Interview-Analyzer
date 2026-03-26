@@ -3,16 +3,30 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../api/axios";
 
+function Surface({ children, className = "" }) {
+  return (
+    <div
+      className={[
+        "rounded-[24px] border border-white/10 bg-[#141416]/55 backdrop-blur-xl",
+        "shadow-[0_18px_60px_rgba(0,0,0,0.28)]",
+        className,
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
 function Badge({ children, tone = "neutral" }) {
   const cls =
     tone === "good"
-      ? "bg-green-500/15 border-green-500/30 text-green-300"
+      ? "bg-white/[0.12] border-white/[0.18] text-white"
       : tone === "bad"
-      ? "bg-red-500/15 border-red-500/30 text-red-300"
+      ? "bg-white/[0.06] border-white/[0.14] text-white/75"
       : "bg-white/10 border-white/15 text-white/80";
 
   return (
-    <span className={`text-xs px-2 py-1 rounded-full border ${cls}`}>
+    <span className={`text-xs px-2.5 py-1 rounded-full border ${cls}`}>
       {children}
     </span>
   );
@@ -22,8 +36,8 @@ function StatCard({ label, value, sub }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/30 p-4">
       <p className="text-white/60 text-sm">{label}</p>
-      <p className="text-2xl font-semibold mt-1">{value}</p>
-      {sub ? <p className="text-white/50 text-xs mt-1">{sub}</p> : null}
+      <p className="mt-1 text-2xl font-semibold text-white">{value}</p>
+      {sub ? <p className="mt-1 text-xs text-white/50">{sub}</p> : null}
     </div>
   );
 }
@@ -68,16 +82,19 @@ export default function Insights() {
   }, [sessionId]);
 
   return (
-    <div className="min-h-screen bg-black text-white px-6 py-10">
+    <div className="min-h-screen px-6 py-10 text-white">
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="max-w-5xl mx-auto"
+        className="mx-auto max-w-5xl"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold">
+            <h1
+              className="text-3xl font-semibold text-white"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
               {isOverall ? "Overall Insights" : "Insights"}
             </h1>
             <p className="mt-2 text-white/70">
@@ -85,8 +102,7 @@ export default function Insights() {
                 <>User-level performance across all interview sessions</>
               ) : (
                 <>
-                  Session:{" "}
-                  <span className="text-white/90">{sessionId || "—"}</span>
+                  Session: <span className="text-white/90">{sessionId || "—"}</span>
                 </>
               )}
             </p>
@@ -95,7 +111,7 @@ export default function Insights() {
           <div className="flex gap-3">
             <button
               onClick={() => nav(-1)}
-              className="border border-white/20 px-4 py-2 rounded-xl hover:bg-white/10 transition"
+              className="rounded-xl border border-white/20 px-4 py-2 transition hover:bg-white/10"
             >
               Back
             </button>
@@ -106,7 +122,7 @@ export default function Insights() {
                   ? `/analytics?session_id=${encodeURIComponent(sessionId)}`
                   : "/analytics"
               }
-              className="bg-white text-black px-4 py-2 rounded-xl font-medium hover:scale-[1.02] transition"
+              className="rounded-xl bg-white px-4 py-2 font-medium text-black transition hover:scale-[1.02]"
             >
               Analytics
             </Link>
@@ -117,10 +133,10 @@ export default function Insights() {
           <span className="text-xs text-white/60">Developer mode</span>
           <button
             onClick={() => setDevMode((v) => !v)}
-            className={`text-xs px-3 py-1 rounded-full border transition ${
+            className={`rounded-full border px-3 py-1 text-xs transition ${
               devMode
-                ? "bg-white text-black border-white"
-                : "bg-white/5 text-white border-white/15 hover:bg-white/10"
+                ? "border-white bg-white text-black"
+                : "border-white/15 bg-white/5 text-white hover:bg-white/10"
             }`}
           >
             {devMode ? "ON" : "OFF"}
@@ -128,28 +144,28 @@ export default function Insights() {
         </div>
 
         {msg && (
-          <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white/75">
             {msg}
           </div>
         )}
 
         {loading ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-white/70">
+          <Surface className="mt-6 p-6 text-white/70">
             Loading insights...
-          </div>
+          </Surface>
         ) : !data ? null : (
           <div className="mt-6 grid gap-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <Surface className="p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-semibold">Overall</h2>
+                  <h2 className="text-xl font-semibold text-white">Overall</h2>
                   <Badge tone={overallTone}>
                     {data.overall_performance || "Overview"}
                   </Badge>
                 </div>
 
                 {!isOverall ? (
-                  <div className="flex items-center gap-3 text-sm text-white/70">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
                     <span>
                       Domain: <span className="text-white/90">{data.domain}</span>
                     </span>
@@ -160,7 +176,7 @@ export default function Insights() {
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 text-sm text-white/70 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
                     <span>
                       Sessions:{" "}
                       <span className="text-white/90">
@@ -192,7 +208,7 @@ export default function Insights() {
                 )}
               </div>
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <StatCard
                   label={isOverall ? "Average Answer Score" : "Average Score"}
                   value={`${Number(
@@ -215,12 +231,14 @@ export default function Insights() {
                   </div>
                 ) : null}
               </div>
-            </div>
+            </Surface>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-xl font-semibold">Communication Metrics</h2>
+            <Surface className="p-6">
+              <h2 className="text-xl font-semibold text-white">
+                Communication Metrics
+              </h2>
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                   label="Avg Words / Min"
                   value={Number(
@@ -246,27 +264,28 @@ export default function Insights() {
                   sub="Estimated pauses"
                 />
               </div>
-            </div>
+            </Surface>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-xl font-semibold">Coaching</h2>
+            <Surface className="p-6">
+              <h2 className="text-xl font-semibold text-white">Coaching</h2>
+
               <div className="mt-3 grid gap-3">
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                  <p className="text-white/70 text-sm">Communication</p>
+                  <p className="text-sm text-white/70">Communication</p>
                   <p className="mt-1 text-white/90">
                     {data.communication_analysis || "—"}
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                  <p className="text-white/70 text-sm">Consistency</p>
+                  <p className="text-sm text-white/70">Consistency</p>
                   <p className="mt-1 text-white/90">
                     {data.consistency_analysis || "—"}
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-                  <p className="text-white/70 text-sm">Try this next</p>
+                  <p className="text-sm text-white/70">Try this next</p>
                   <p className="mt-1 text-white/90">
                     {data.next_step_suggestion || "—"}
                   </p>
@@ -275,17 +294,20 @@ export default function Insights() {
                   </p>
                 </div>
               </div>
-            </div>
+            </Surface>
 
             {isOverall ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <h2 className="text-xl font-semibold">Domain Distribution</h2>
+              <Surface className="p-6">
+                <h2 className="text-xl font-semibold text-white">
+                  Domain Distribution
+                </h2>
+
                 {data.domains && Object.keys(data.domains).length > 0 ? (
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {Object.entries(data.domains).map(([domain, count]) => (
                       <div
                         key={domain}
-                        className="rounded-xl border border-white/10 bg-black/30 p-4 flex items-center justify-between"
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-4"
                       >
                         <span className="uppercase tracking-wide text-white/90">
                           {domain}
@@ -297,12 +319,14 @@ export default function Insights() {
                 ) : (
                   <p className="mt-3 text-white/70">No domain data available.</p>
                 )}
-              </div>
+              </Surface>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <Surface className="p-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Best Answer</h2>
+                    <h2 className="text-xl font-semibold text-white">
+                      Best Answer
+                    </h2>
                     <Badge tone="good">
                       Score: {data.best_answer?.score ?? 0}
                     </Badge>
@@ -311,15 +335,17 @@ export default function Insights() {
                     Q: {data.best_answer?.question || "—"}
                   </p>
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-4">
-                    <p className="text-white/90 whitespace-pre-wrap">
+                    <p className="whitespace-pre-wrap text-white/90">
                       {data.best_answer?.feedback || "—"}
                     </p>
                   </div>
-                </div>
+                </Surface>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <Surface className="p-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Needs Work</h2>
+                    <h2 className="text-xl font-semibold text-white">
+                      Needs Work
+                    </h2>
                     <Badge tone="bad">
                       Score: {data.weakest_answer?.score ?? 0}
                     </Badge>
@@ -328,23 +354,25 @@ export default function Insights() {
                     Q: {data.weakest_answer?.question || "—"}
                   </p>
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-4">
-                    <p className="text-white/90 whitespace-pre-wrap">
+                    <p className="whitespace-pre-wrap text-white/90">
                       {data.weakest_answer?.feedback || "—"}
                     </p>
                   </div>
-                </div>
+                </Surface>
               </div>
             )}
 
             {devMode ? (
-              <details className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <summary className="cursor-pointer text-white/80">
-                  Developer: raw JSON
-                </summary>
-                <pre className="mt-3 text-xs bg-black/40 p-4 rounded-xl overflow-auto">
-                  {JSON.stringify(data, null, 2)}
-                </pre>
-              </details>
+              <Surface className="p-6">
+                <details>
+                  <summary className="cursor-pointer text-white/80">
+                    Developer: raw JSON
+                  </summary>
+                  <pre className="mt-3 overflow-auto rounded-xl bg-black/40 p-4 text-xs">
+                    {JSON.stringify(data, null, 2)}
+                  </pre>
+                </details>
+              </Surface>
             ) : null}
           </div>
         )}

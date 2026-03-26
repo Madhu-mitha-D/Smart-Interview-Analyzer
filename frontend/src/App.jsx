@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import IntroAnimation from "./components/ui/IntroAnimation";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Layout from "./components/Layout";
+import IntroAnimation from "./components/ui/IntroAnimation";
 
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
@@ -15,54 +15,88 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 
-export default function App() {
-  const [introComplete, setIntroComplete] = useState(false);
+function RequireAuth({ children }) {
+  const token = localStorage.getItem("token");
+  if (!token) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function AppRoutes() {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+
+  const shouldShowIntro =
+    token &&
+    location.pathname === "/" &&
+    location.state?.playIntro === true;
+
+  const [introComplete, setIntroComplete] = useState(true);
+
+  useEffect(() => {
+    if (shouldShowIntro) {
+      setIntroComplete(false);
+    } else {
+      setIntroComplete(true);
+    }
+  }, [shouldShowIntro]);
+
+  const contentVisible = !shouldShowIntro || introComplete;
 
   return (
     <>
-      <IntroAnimation onComplete={() => setIntroComplete(true)} />
+      {shouldShowIntro && !introComplete && (
+        <IntroAnimation onComplete={() => setIntroComplete(true)} />
+      )}
 
       <div
         style={{
-          opacity: introComplete ? 1 : 0,
-          transition: "opacity 0.5s ease-in-out",
+          opacity: contentVisible ? 1 : 0,
+          transition: "opacity 0.45s ease",
         }}
       >
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <Routes>
+          <Route
+            path="/login"
+            element={token ? <Navigate to="/" replace /> : <Login />}
+          />
+          <Route
+            path="/register"
+            element={token ? <Navigate to="/" replace /> : <Register />}
+          />
 
-            {/* App routes */}
-            <Route element={<Layout />}>
-              {/* Landing page AFTER login */}
-              <Route index element={<Home />} />
-              <Route path="/" element={<Home />} />
+          <Route
+            element={
+              <RequireAuth>
+                <Layout />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<Home />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/interview" element={<Interview />} />
+            <Route path="/interview/domain" element={<DomainInterview />} />
+            <Route path="/interview/resume" element={<ResumeInterviewPage />} />
+            <Route path="/interview/coding" element={<CodingInterviewPage />} />
+            <Route path="/insights" element={<Insights />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/profile" element={<Profile />} />
+          </Route>
 
-              {/* Main sections */}
-              <Route path="/dashboard" element={<Dashboard />} />
-
-              {/* Interview section */}
-              <Route path="/interview" element={<Interview />} />
-              <Route path="/interview/domain" element={<DomainInterview />} />
-              <Route
-                path="/interview/resume"
-                element={<ResumeInterviewPage />}
-              />
-              <Route
-                path="/interview/coding"
-                element={<CodingInterviewPage />}
-              />
-
-              {/* Results & profile */}
-              <Route path="/insights" element={<Insights />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/profile" element={<Profile />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+          <Route
+            path="*"
+            element={<Navigate to={token ? "/" : "/login"} replace />}
+          />
+        </Routes>
       </div>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }

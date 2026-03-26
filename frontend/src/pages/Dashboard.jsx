@@ -1,718 +1,508 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { createPortal } from "react-dom";
+import {
+  TrendingUp,
+  CheckCircle,
+  Activity,
+  Brain,
+  Code2,
+  FileText,
+  BarChart3,
+  Target,
+  Sparkles,
+  ArrowUpRight,
+  Clock3,
+} from "lucide-react";
 import api from "../api/axios";
-
-function StatusPill({ done }) {
-  return done ? (
-    <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300">
-      Completed
-    </span>
-  ) : (
-    <span className="inline-flex items-center rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
-      In progress
-    </span>
-  );
-}
-
-function GhostButton({ children, className = "", disabled, ...props }) {
-  return (
-    <button
-      {...props}
-      disabled={disabled}
-      className={[
-        "rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white",
-        disabled ? "cursor-not-allowed opacity-60" : "",
-        className,
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
-function PrimaryButton({ children, className = "", disabled, ...props }) {
-  return (
-    <button
-      {...props}
-      disabled={disabled}
-      className={[
-        "rounded-xl px-5 py-2 text-sm font-medium transition",
-        disabled
-          ? "cursor-not-allowed border border-white/10 bg-white/[0.04] text-white/40"
-          : "bg-white text-black hover:scale-[1.02]",
-        className,
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
+import { PrimaryButton, GhostButton } from "../components/Buttons";
 
 function Surface({ children, className = "" }) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.18 }}
+    <div
       className={[
-        "rounded-2xl border border-white/10 bg-[#141416]/55 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.28)]",
+        "rounded-[24px] border border-white/10 bg-[#141416]/55 backdrop-blur-xl",
+        "shadow-[0_18px_60px_rgba(0,0,0,0.28)]",
         className,
       ].join(" ")}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
-function StatCard({ label, value, sub, accent = "white" }) {
-  const accentClass =
-    accent === "violet"
-      ? "from-violet-400/30 to-transparent"
-      : accent === "blue"
-      ? "from-sky-400/30 to-transparent"
-      : accent === "emerald"
-      ? "from-emerald-400/30 to-transparent"
-      : "from-white/20 to-transparent";
-
+function HeaderChip({ children }) {
   return (
-    <Surface className="relative overflow-hidden p-4">
-      <div
-        className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r ${accentClass}`}
-      />
-      <p className="text-xs text-white/45">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-white">
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1.5">
+      <span className="text-[11px] font-mono uppercase tracking-widest text-white/45">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, sub, trend }) {
+  return (
+    <Surface className="p-5">
+      <div className="mb-4 flex items-start justify-between">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
+          <Icon className="h-4 w-4 text-white/70" />
+        </div>
+
+        {trend && (
+          <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] text-white/55">
+            <TrendingUp className="h-3 w-3" />
+            {trend}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] uppercase tracking-[0.16em] text-white/30">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold tracking-tight text-white">
         {value}
       </p>
-      {sub ? <p className="mt-1 text-xs text-white/35">{sub}</p> : null}
+      {sub && <p className="mt-1 text-xs text-white/38">{sub}</p>}
     </Surface>
   );
 }
 
-function ProgressBar({ value, max = 100 }) {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+function ScoreBar({ value, max = 10 }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
 
   return (
-    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-violet-300/80 to-sky-300/80 transition-all"
-        style={{ width: `${pct}%` }}
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="h-full rounded-full bg-gradient-to-r from-violet-300/80 to-sky-300/80"
       />
     </div>
   );
 }
 
-function TrendChart({ values }) {
-  if (!values.length) {
-    return (
-      <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-5 text-sm text-white/45">
-        No completed session trend yet.
-      </div>
-    );
-  }
+function SessionRow({ session, onView, onResume }) {
+  const score =
+    session.total_score != null ? Number(session.total_score) : null;
+  const date = session.created_at
+    ? new Date(session.created_at).toLocaleDateString("en-IN", {
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
 
-  const width = 420;
-  const height = 180;
-  const padding = 18;
+  const typeIcon =
+    { domain: Brain, coding: Code2, resume: FileText }[
+      session.interview_type
+    ] || Activity;
 
-  const min = Math.min(...values, 0);
-  const max = Math.max(...values, 10);
-  const range = Math.max(max - min, 1);
-
-  const points = values.map((v, i) => {
-    const x =
-      padding + (i * (width - padding * 2)) / Math.max(values.length - 1, 1);
-    const y = height - padding - ((v - min) / range) * (height - padding * 2);
-    return { x, y, v };
-  });
-
-  const line = points.map((p) => `${p.x},${p.y}`).join(" ");
-  const area = [
-    `${points[0].x},${height - padding}`,
-    ...points.map((p) => `${p.x},${p.y}`),
-    `${points[points.length - 1].x},${height - padding}`,
-  ].join(" ");
+  const TypeIcon = typeIcon;
 
   return (
-    <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full">
-        <defs>
-          <linearGradient id="trendArea" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(139,92,246,0.35)" />
-            <stop offset="100%" stopColor="rgba(14,165,233,0.04)" />
-          </linearGradient>
-          <linearGradient id="trendStroke" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="rgba(139,92,246,0.95)" />
-            <stop offset="100%" stopColor="rgba(56,189,248,0.95)" />
-          </linearGradient>
-        </defs>
-
-        {[0, 1, 2, 3].map((i) => {
-          const y = padding + (i * (height - padding * 2)) / 3;
-          return (
-            <line
-              key={i}
-              x1={padding}
-              x2={width - padding}
-              y1={y}
-              y2={y}
-              stroke="rgba(255,255,255,0.08)"
-              strokeWidth="1"
-            />
-          );
-        })}
-
-        <polygon points={area} fill="url(#trendArea)" />
-        <polyline
-          points={line}
-          fill="none"
-          stroke="url(#trendStroke)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {points.map((p, i) => (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r="4.5" fill="rgba(255,255,255,0.95)" />
-            <circle cx={p.x} cy={p.y} r="8" fill="rgba(255,255,255,0.08)" />
-          </g>
-        ))}
-      </svg>
-
-      <div className="mt-3 flex items-center justify-between text-xs text-white/35">
-        {values.map((_, i) => (
-          <span key={i}>S{i + 1}</span>
-        ))}
+    <div className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.05]">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
+        <TypeIcon className="h-4 w-4 text-white/70" />
       </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold capitalize text-white/82">
+          {session.interview_type || "Interview"}{" "}
+          <span className="font-mono text-[10px] text-white/30">
+            #{session.session_id?.slice(-6)}
+          </span>
+        </p>
+        <p className="mt-0.5 font-mono text-[11px] text-white/30">{date}</p>
+      </div>
+
+      <div className="min-w-[92px] flex-shrink-0 text-right">
+        {session.is_completed && score != null ? (
+          <div>
+            <p className="mb-1 text-sm font-bold leading-none text-white">
+              {score.toFixed(1)}
+              <span className="text-[10px] text-white/30">/10</span>
+            </p>
+            <ScoreBar value={score} />
+          </div>
+        ) : (
+          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 font-mono text-[10px] text-white/55">
+            In Progress
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        {!session.is_completed ? (
+          <GhostButton onClick={() => onResume?.(session)}>Resume</GhostButton>
+        ) : (
+          <GhostButton onClick={() => onView?.(session)}>View</GhostButton>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuickAction({ icon: Icon, title, desc, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-left transition hover:border-white/[0.14] hover:bg-white/[0.05]"
+    >
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
+        <Icon className="h-4 w-4 text-white/70" />
+      </div>
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-white/40">{desc}</p>
+    </button>
+  );
+}
+
+function TinyMetric({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-white/28">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-bold text-white">{value}</p>
     </div>
   );
 }
 
 export default function Dashboard() {
-  const nav = useNavigate();
-
-  const [me, setMe] = useState(null);
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
-  const [loadingMe, setLoadingMe] = useState(true);
-  const [loadingSessions, setLoadingSessions] = useState(true);
-
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deletingId, setDeletingId] = useState("");
+  const [userName, setUserName] = useState("");
 
   const forceLogout = () => {
     localStorage.removeItem("token");
-    nav("/login", { replace: true });
+    navigate("/login", { replace: true });
   };
 
   useEffect(() => {
     (async () => {
       try {
-        setLoadingMe(true);
-        const res = await api.get("/auth/me");
-        setMe(res.data);
-      } catch {
-        forceLogout();
+        const [meRes, sessionsRes] = await Promise.all([
+          api.get("/auth/me").catch(() => null),
+          api.get("/interviews/my"),
+        ]);
+
+        if (meRes?.data?.name) setUserName(meRes.data.name);
+        setSessions(Array.isArray(sessionsRes.data) ? sessionsRes.data : []);
+      } catch (e) {
+        if (e?.response?.status === 401) forceLogout();
+        else setMsg(e?.response?.data?.detail || "Failed to load sessions.");
       } finally {
-        setLoadingMe(false);
+        setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadSessions = async () => {
-    setMsg("");
-    try {
-      setLoadingSessions(true);
-      const res = await api.get("/interviews/my");
-      setSessions(res.data || []);
-    } catch (e) {
-      const status = e?.response?.status;
-      if (status === 401) return forceLogout();
-      setMsg(e?.response?.data?.detail || "Failed to load sessions");
-    } finally {
-      setLoadingSessions(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const orderedSessions = useMemo(() => [...(sessions || [])], [sessions]);
 
   const stats = useMemo(() => {
-    const total = orderedSessions.length;
-    const completed = orderedSessions.filter((s) => s.is_completed).length;
-    const active = total - completed;
-    const avgScore =
-      total > 0
-        ? (
-            orderedSessions.reduce(
-              (sum, s) => sum + Number(s.total_score || 0),
-              0
-            ) / total
-          ).toFixed(2)
-        : "0.00";
+    const total = sessions.length;
+    const completed = sessions.filter((s) => s.is_completed).length;
+    const scores = sessions
+      .filter((s) => s.is_completed && s.total_score != null)
+      .map((s) => Number(s.total_score));
 
-    return { total, completed, active, avgScore };
-  }, [orderedSessions]);
+    const avgScore = scores.length
+      ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+      : "—";
 
-  const latestActive = useMemo(
-    () => orderedSessions.find((s) => !s.is_completed) || null,
-    [orderedSessions]
-  );
+    const best = scores.length ? Math.max(...scores).toFixed(1) : "—";
 
-  const recommendedDomain = useMemo(() => {
-    const completed = orderedSessions.filter((s) => s.is_completed);
+    const completionRate = total > 0 ? ((completed / total) * 100).toFixed(0) : "0";
 
-    if (completed.length === 0) return "hr";
+    return { total, completed, avgScore, best, completionRate };
+  }, [sessions]);
 
-    const domainScores = {};
-    completed.forEach((s) => {
-      const d = String(s.domain || "general").toLowerCase();
-      if (!domainScores[d]) domainScores[d] = [];
-      domainScores[d].push(Number(s.total_score || 0));
+  const recent = useMemo(() => [...sessions].reverse().slice(0, 6), [sessions]);
+  const active = useMemo(() => sessions.find((s) => !s.is_completed), [sessions]);
+
+  const topModes = useMemo(() => {
+    const counts = { domain: 0, resume: 0, coding: 0 };
+
+    sessions.forEach((s) => {
+      const key = s.interview_type;
+      if (counts[key] != null) counts[key] += 1;
     });
 
-    let weakest = "hr";
-    let weakestAvg = Infinity;
-
-    Object.entries(domainScores).forEach(([domain, scores]) => {
-      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-      if (avg < weakestAvg) {
-        weakestAvg = avg;
-        weakest = domain;
-      }
-    });
-
-    return weakest;
-  }, [orderedSessions]);
-
-  const domainSummary = useMemo(() => {
-    const map = {};
-
-    orderedSessions.forEach((s) => {
-      const domain = String(s.domain || "general").toUpperCase();
-      if (!map[domain]) map[domain] = { count: 0, score: 0 };
-      map[domain].count += 1;
-      map[domain].score += Number(s.total_score || 0);
-    });
-
-    return Object.entries(map).map(([domain, data]) => ({
-      domain,
-      count: data.count,
-      avgScore: data.count ? data.score / data.count : 0,
-    }));
-  }, [orderedSessions]);
-
-  const coachMessage = useMemo(() => {
-    if (stats.total === 0) {
-      return "Start your first interview to unlock personalized feedback and progress tracking.";
-    }
-    if (stats.active > 0) {
-      return "You already have an unfinished interview. Resume it to keep the momentum going.";
-    }
-    if (Number(stats.avgScore) < 5) {
-      return "Focus on clearer structure and stronger examples in your answers.";
-    }
-    if (Number(stats.avgScore) < 8) {
-      return "You’re improving well. Add more depth and specific outcomes in your responses.";
-    }
-    return "You’re doing well. Try a harder round or revisit your weakest domain next.";
-  }, [stats]);
-
-  const trendValues = useMemo(() => {
-    return orderedSessions
-      .filter((s) => s.is_completed)
-      .slice(0, 6)
-      .reverse()
-      .map((s) => Number(s.total_score || 0));
-  }, [orderedSessions]);
-
-  const openDelete = (session) => setDeleteTarget(session);
-
-  const closeDelete = () => {
-    if (deletingId) return;
-    setDeleteTarget(null);
-  };
-
-  const deleteSession = async () => {
-    if (!deleteTarget?.session_id) return;
-
-    setMsg("");
-    setDeletingId(deleteTarget.session_id);
-
-    try {
-      await api.delete(
-        `/interviews/${encodeURIComponent(deleteTarget.session_id)}`
-      );
-      setDeleteTarget(null);
-      await loadSessions();
-    } catch (e) {
-      const status = e?.response?.status;
-      if (status === 401) return forceLogout();
-      setMsg(e?.response?.data?.detail || "Delete failed");
-    } finally {
-      setDeletingId("");
-    }
-  };
-
-  const deleteModal = deleteTarget
-    ? createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-6">
-          <div className="absolute inset-0 bg-black/70" onClick={closeDelete} />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="relative z-10 w-full max-w-lg rounded-3xl border border-white/10 bg-[#141416] p-6 shadow-2xl"
-          >
-            <h3 className="text-xl font-semibold text-white">Delete session?</h3>
-            <p className="mt-2 text-sm text-white/65">
-              This will delete the interview session and all its answers.
-            </p>
-
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm">
-              <p className="break-all text-white/65">
-                Session:{" "}
-                <span className="text-white/90">{deleteTarget.session_id}</span>
-              </p>
-              <p className="mt-1 text-white/65">
-                {String(deleteTarget.domain || "").toUpperCase()} •{" "}
-                {deleteTarget.difficulty}
-              </p>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <GhostButton
-                type="button"
-                onClick={closeDelete}
-                disabled={!!deletingId}
-              >
-                Cancel
-              </GhostButton>
-
-              <button
-                type="button"
-                onClick={deleteSession}
-                disabled={!!deletingId}
-                className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition hover:bg-red-500/20 disabled:opacity-60"
-              >
-                {deletingId ? "Deleting..." : "Confirm Delete"}
-              </button>
-            </div>
-          </motion.div>
-        </div>,
-        document.body
-      )
-    : null;
+    return [
+      { label: "Domain", value: counts.domain },
+      { label: "Resume", value: counts.resume },
+      { label: "Coding", value: counts.coding },
+    ];
+  }, [sessions]);
 
   return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="space-y-6"
-      >
-        <div className="space-y-2 pt-2">
-          <p className="text-sm text-white/40">
-            {loadingMe ? "Loading profile..." : `Signed in as ${me?.email || "—"}`}
-          </p>
-          <h1 className="text-4xl font-semibold tracking-tight text-white">
-            Welcome back{me?.full_name ? `, ${me.full_name}` : ""}.
-          </h1>
-          <p className="max-w-2xl text-sm leading-6 text-white/55">
-            Practice interviews, review performance, and keep improving with a calmer,
-            clearer view of your progress.
-          </p>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Next action
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              {latestActive ? "Continue your interview" : "Start a new interview"}
-            </h2>
-
-            {latestActive ? (
-              <>
-                <div className="mt-4 flex items-center gap-3">
-                  <StatusPill done={false} />
-                  <span className="text-sm text-white/55">
-                    {String(latestActive.domain || "").toUpperCase()} •{" "}
-                    {latestActive.difficulty}
-                  </span>
-                </div>
-
-                <p className="mt-3 break-all text-sm text-white/42">
-                  Session: {latestActive.session_id}
-                </p>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <PrimaryButton
-                    onClick={() =>
-                      nav(
-                        `/interview?session_id=${encodeURIComponent(
-                          latestActive.session_id
-                        )}`
-                      )
-                    }
-                  >
-                    Continue Interview
-                  </PrimaryButton>
-
-                  <Link
-                    to={`/insights?session_id=${encodeURIComponent(
-                      latestActive.session_id
-                    )}`}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-                  >
-                    View Insights
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="mt-4 text-sm text-white/58">
-                  No unfinished session right now. Start a fresh round and keep your practice streak going.
-                </p>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <PrimaryButton onClick={() => nav("/interview")}>
-                    Start Interview
-                  </PrimaryButton>
-                  <GhostButton onClick={() => nav("/analytics")}>
-                    View Analytics
-                  </GhostButton>
-                </div>
-              </>
-            )}
-          </Surface>
-
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Recommendation
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              Focus next on {String(recommendedDomain || "hr").toUpperCase()}
-            </h2>
-            <p className="mt-4 text-sm leading-6 text-white/58">{coachMessage}</p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <PrimaryButton onClick={() => nav("/interview")}>
-                Practice Now
-              </PrimaryButton>
-              <GhostButton onClick={() => nav("/profile")}>View Profile</GhostButton>
-            </div>
-          </Surface>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Total Sessions"
-            value={stats.total}
-            sub="All interview sessions"
-            accent="violet"
-          />
-          <StatCard
-            label="Completed"
-            value={stats.completed}
-            sub="Finished sessions"
-            accent="emerald"
-          />
-          <StatCard
-            label="In Progress"
-            value={stats.active}
-            sub="Resume anytime"
-            accent="blue"
-          />
-          <StatCard
-            label="Average Score"
-            value={stats.avgScore}
-            sub="Across all sessions"
-            accent="white"
-          />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Score trend
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              Recent performance
-            </h2>
-            <p className="mt-2 text-sm text-white/50">
-              A quick view of your latest completed interview scores.
-            </p>
-            <TrendChart values={trendValues} />
-          </Surface>
-
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Domain strength
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">
-              Practice distribution
-            </h2>
-
-            <div className="mt-5 space-y-4">
-              {domainSummary.length === 0 ? (
-                <p className="text-sm text-white/50">
-                  No domain history yet. Start a session to build progress data.
-                </p>
-              ) : (
-                domainSummary.map((item) => (
-                  <div key={item.domain}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {item.domain}
-                        </p>
-                        <p className="text-xs text-white/40">
-                          {item.count} session{item.count > 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <p className="text-sm font-medium text-white">
-                        {item.avgScore.toFixed(1)}
-                      </p>
-                    </div>
-                    <ProgressBar value={item.avgScore} max={10} />
-                  </div>
-                ))
-              )}
-            </div>
-          </Surface>
-        </div>
-
-        <div className="flex items-end justify-between gap-4">
+    <div className="min-h-screen text-white">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-white">Recent sessions</h2>
-            <p className="mt-1 text-sm text-white/45">
-              Continue unfinished sessions or review completed ones.
+            <HeaderChip>Dashboard</HeaderChip>
+            <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-white">
+              {userName ? `Welcome back, ${userName}` : "Your Progress"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-white/42 sm:text-base">
+              Track your sessions, monitor scores, and continue interview
+              practice from one workspace.
             </p>
           </div>
 
-          <GhostButton onClick={loadSessions}>Refresh</GhostButton>
+          <div className="flex flex-wrap gap-3">
+            <PrimaryButton onClick={() => navigate("/interview")}>
+              Start Interview
+            </PrimaryButton>
+            <GhostButton onClick={() => navigate("/analytics")}>
+              View Analytics
+            </GhostButton>
+          </div>
         </div>
 
-        {msg ? (
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">
-            {msg}
-          </div>
-        ) : null}
+        {active && (
+          <div className="mb-6">
+            <Surface className="relative overflow-hidden px-5 py-4">
+              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-violet-300/80 to-sky-300/80" />
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
+                    <Clock3 className="h-4 w-4 text-white/70" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Session in progress
+                    </p>
+                    <p className="mt-1 text-xs text-white/42">
+                      {active.interview_type} · #{active.session_id?.slice(-6)}
+                    </p>
+                  </div>
+                </div>
 
-        <div className="space-y-3">
-          {loadingSessions ? (
-            <Surface className="p-6 text-white/65">Loading sessions...</Surface>
-          ) : orderedSessions.length === 0 ? (
-            <Surface className="p-8 text-center">
-              <p className="text-lg text-white/85">No sessions yet</p>
-              <p className="mt-2 text-white/55">
-                Start your first interview and your activity will appear here.
-              </p>
-              <div className="mt-5">
-                <PrimaryButton onClick={() => nav("/interview")}>
-                  Start Interview
+                <PrimaryButton
+                  onClick={() =>
+                    navigate(
+                      `/interview/domain?session_id=${encodeURIComponent(
+                        active.session_id
+                      )}`
+                    )
+                  }
+                >
+                  Resume Session
                 </PrimaryButton>
               </div>
             </Surface>
-          ) : (
-            orderedSessions.slice(0, 6).map((s, idx) => {
-              const sid = s.session_id;
-              const isDone = !!s.is_completed;
+          </div>
+        )}
 
-              return (
-                <Surface key={sid} className="p-5">
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: idx * 0.03 }}
-                    className="flex flex-wrap items-center justify-between gap-5"
-                  >
-                    <div className="min-w-[250px] flex-1">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-base font-semibold uppercase tracking-wide text-white">
-                          {s.domain}
-                        </span>
-                        <span className="text-white/20">•</span>
-                        <span className="text-sm text-white/60">
-                          {s.difficulty}
-                        </span>
-                        <StatusPill done={isDone} />
-                      </div>
-
-                      <p className="mt-3 break-all text-sm text-white/42">
-                        Session: <span className="text-white/75">{sid}</span>
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-white/52">
-                        <span>
-                          Score:{" "}
-                          <span className="text-white">{s.total_score ?? 0}</span>
-                        </span>
-
-                        {s.verdict ? (
-                          <span>
-                            Verdict: <span className="text-white">{s.verdict}</span>
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Link
-                        to={`/insights?session_id=${encodeURIComponent(sid)}`}
-                        className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-                      >
-                        Insights
-                      </Link>
-
-                      <Link
-                        to={`/analytics?session_id=${encodeURIComponent(sid)}`}
-                        className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-                      >
-                        Analytics
-                      </Link>
-
-                      <PrimaryButton
-                        onClick={() =>
-                          nav(`/interview?session_id=${encodeURIComponent(sid)}`)
-                        }
-                        disabled={isDone}
-                        title={
-                          isDone
-                            ? "Completed sessions can’t be continued."
-                            : "Continue interview"
-                        }
-                      >
-                        Continue
-                      </PrimaryButton>
-
-                      <button
-                        type="button"
-                        onClick={() => openDelete(s)}
-                        disabled={deletingId === sid}
-                        className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition hover:bg-red-500/20 disabled:opacity-60"
-                      >
-                        {deletingId === sid ? "Deleting..." : "Delete"}
-                      </button>
-                    </div>
-                  </motion.div>
-                </Surface>
-              );
-            })
-          )}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            icon={Activity}
+            label="Total Sessions"
+            value={loading ? "…" : stats.total}
+            sub="All recorded interview attempts"
+            trend="+"
+          />
+          <StatCard
+            icon={CheckCircle}
+            label="Completed"
+            value={loading ? "…" : stats.completed}
+            sub={`${stats.completionRate}% completion rate`}
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="Average Score"
+            value={loading ? "…" : stats.avgScore}
+            sub="Average across completed sessions"
+          />
+          <StatCard
+            icon={Target}
+            label="Best Score"
+            value={loading ? "…" : stats.best}
+            sub="Your strongest recorded performance"
+          />
         </div>
-      </motion.div>
 
-      {deleteModal}
-    </>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+          <div className="space-y-6">
+            <Surface className="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/28">
+                    Recent Activity
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-white">
+                    Session History
+                  </h2>
+                </div>
+
+                <GhostButton onClick={() => navigate("/analytics")}>
+                  View All
+                </GhostButton>
+              </div>
+
+              {loading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-16 animate-pulse rounded-2xl bg-white/[0.03]"
+                    />
+                  ))}
+                </div>
+              ) : msg ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/65">
+                  {msg}
+                </div>
+              ) : recent.length === 0 ? (
+                <div className="flex flex-col items-center py-14 text-center">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05]">
+                    <Sparkles className="h-6 w-6 text-white/70" />
+                  </div>
+                  <p className="text-sm font-semibold text-white/65">
+                    No sessions yet
+                  </p>
+                  <p className="mt-1 text-xs text-white/35">
+                    Start an interview to see your history here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recent.map((s) => (
+                    <SessionRow
+                      key={s.session_id}
+                      session={s}
+                      onView={() =>
+                        navigate(
+                          `/insights?session_id=${encodeURIComponent(s.session_id)}`
+                        )
+                      }
+                      onResume={() =>
+                        navigate(
+                          `/interview/domain?session_id=${encodeURIComponent(
+                            s.session_id
+                          )}`
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </Surface>
+
+            <Surface className="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/28">
+                    Quick Actions
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-white">
+                    Start a New Practice Round
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <QuickAction
+                  icon={Brain}
+                  title="Domain Interview"
+                  desc="Pick a topic and begin guided practice."
+                  onClick={() => navigate("/interview/domain")}
+                />
+                <QuickAction
+                  icon={FileText}
+                  title="Resume Interview"
+                  desc="Practice based on projects and experience."
+                  onClick={() => navigate("/interview/resume")}
+                />
+                <QuickAction
+                  icon={Code2}
+                  title="Coding Interview"
+                  desc="Solve coding problems in a focused workspace."
+                  onClick={() => navigate("/interview/coding")}
+                />
+              </div>
+            </Surface>
+          </div>
+
+          <div className="space-y-6">
+            <Surface className="p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/28">
+                    Performance Snapshot
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-white">
+                    Quick Metrics
+                  </h2>
+                </div>
+                <ArrowUpRight className="h-4 w-4 text-white/35" />
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-1.5 flex justify-between text-sm">
+                    <span className="text-white/48">Average Score</span>
+                    <span className="font-semibold text-white">
+                      {stats.avgScore === "—" ? "0.0" : stats.avgScore}
+                    </span>
+                  </div>
+                  <ScoreBar
+                    value={stats.avgScore === "—" ? 0 : parseFloat(stats.avgScore)}
+                    max={10}
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex justify-between text-sm">
+                    <span className="text-white/48">Completion Rate</span>
+                    <span className="font-semibold text-white">
+                      {stats.completionRate}%
+                    </span>
+                  </div>
+                  <ScoreBar value={Number(stats.completionRate)} max={100} />
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <TinyMetric label="Completed" value={stats.completed} />
+                <TinyMetric label="Best Score" value={stats.best} />
+              </div>
+            </Surface>
+
+            <Surface className="p-6">
+              <div className="mb-5">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-white/28">
+                  Interview Modes
+                </p>
+                <h2 className="mt-1 text-xl font-bold text-white">
+                  Usage Overview
+                </h2>
+              </div>
+
+              <div className="space-y-4">
+                {topModes.map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1.5 flex justify-between text-sm">
+                      <span className="text-white/48">{item.label}</span>
+                      <span className="font-semibold text-white">
+                        {item.value}
+                      </span>
+                    </div>
+                    <ScoreBar
+                      value={item.value}
+                      max={Math.max(1, ...topModes.map((m) => m.value))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </Surface>
+          </div>
+        </div>
+      </div>
+
+    </div>
   );
 }

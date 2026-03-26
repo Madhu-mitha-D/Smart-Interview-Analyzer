@@ -1,24 +1,14 @@
-import { useMemo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import Navbar from "./Navbar";
 import BeamBackground from "./BeamBackground";
+import AppNavbar from "./AppNavbar";
+import Footer from "./Footer";
 
 export default function Layout() {
   const location = useLocation();
 
-  const routeTitle = useMemo(() => {
-    const p = location.pathname;
-    if (p === "/") return "Home";
-    if (p.startsWith("/dashboard")) return "Dashboard";
-    if (p.startsWith("/interview")) return "Interview";
-    if (p.startsWith("/insights")) return "Insights";
-    if (p.startsWith("/analytics")) return "Analytics";
-    if (p.startsWith("/profile")) return "Profile";
-    return "Home";
-  }, [location.pathname]);
-
-  const isHome = location.pathname === "/";
+  const showFooter =
+    location.pathname === "/" || location.pathname.startsWith("/profile");
 
   return (
     <div className="relative min-h-screen text-white">
@@ -26,7 +16,7 @@ export default function Layout() {
       <div className="grain" />
 
       <div className="relative z-10">
-        <Navbar title={routeTitle} />
+        <AppNavbar />
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -35,13 +25,13 @@ export default function Layout() {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
             transition={{ duration: 0.24, ease: "easeOut" }}
-            className={
-              isHome ? "" : "mx-auto max-w-7xl px-5 sm:px-7 pt-24 pb-10"
-            }
+            className="mx-auto max-w-7xl px-5 pt-8 pb-10 sm:px-7"
           >
             <Outlet />
           </motion.div>
         </AnimatePresence>
+
+        {showFooter && <Footer />}
       </div>
     </div>
   );

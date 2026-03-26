@@ -8,13 +8,11 @@ function Surface({ children, className = "" }) {
     <div
       className={[
         "relative overflow-hidden rounded-[28px] border border-white/[0.09]",
-        "bg-gradient-to-b from-white/[0.055] to-white/[0.018]",
-        "shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl",
+        "bg-[#141416]/55 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.28)]",
         className,
       ].join(" ")}
     >
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent" />
-      <div className="absolute -right-10 top-0 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(0,229,204,0.14),transparent)] blur-3xl pointer-events-none" />
       <div className="relative z-10">{children}</div>
     </div>
   );

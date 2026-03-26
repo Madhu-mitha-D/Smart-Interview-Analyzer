@@ -16,17 +16,8 @@ function formatTime(totalSeconds) {
 }
 
 function DifficultyBadge({ level }) {
-  const style =
-    level === "easy"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-      : level === "medium"
-      ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
-      : "border-red-500/30 bg-red-500/10 text-red-300";
-
   return (
-    <span
-      className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${style}`}
-    >
+    <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-medium capitalize text-white/75">
       {level}
     </span>
   );
@@ -57,7 +48,7 @@ function StatPill({ label, value, warn = false }) {
       </p>
       <p
         className={`mt-1 text-sm font-medium ${
-          warn ? "text-red-300" : "text-white/80"
+          warn ? "text-white" : "text-white/80"
         }`}
       >
         {value}
@@ -106,6 +97,20 @@ function buildCodeFeedback({ code, result, problem }) {
   }
 
   return feedback.slice(0, 4);
+}
+
+function Surface({ children, className = "" }) {
+  return (
+    <div
+      className={[
+        "rounded-[24px] border border-white/10 bg-[#141416]/55 backdrop-blur-xl",
+        "shadow-[0_18px_60px_rgba(0,0,0,0.28)]",
+        className,
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
 }
 
 export default function CodingInterview() {
@@ -264,14 +269,14 @@ export default function CodingInterview() {
   return (
     <div ref={workspaceRef} className="space-y-5">
       {!problem ? (
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
+        <Surface className="p-6">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-white/60">
               <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
               Coding workspace
             </div>
 
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Start your coding round
             </h2>
 
@@ -287,7 +292,7 @@ export default function CodingInterview() {
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-black/30 p-3"
+                className="w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"
               >
                 <option value="easy">Easy — 15 min</option>
                 <option value="medium">Medium — 25 min</option>
@@ -300,7 +305,7 @@ export default function CodingInterview() {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-black/30 p-3"
+                className="w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"
               >
                 <option value="python">Python</option>
                 <option value="java">Java</option>
@@ -318,10 +323,10 @@ export default function CodingInterview() {
               {loading ? "Loading..." : "Start Coding Question"}
             </PrimaryButton>
           </div>
-        </div>
+        </Surface>
       ) : (
         <div className="grid gap-4 xl:grid-cols-[460px_minmax(0,1fr)]">
-          <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
+          <Surface className="overflow-hidden">
             <div className="border-b border-white/10 px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -465,9 +470,9 @@ export default function CodingInterview() {
                 ) : null}
               </div>
             </div>
-          </div>
+          </Surface>
 
-          <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_0_30px_rgba(255,255,255,0.03)]">
+          <Surface className="overflow-hidden">
             <div className="border-b border-white/10 px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
@@ -588,7 +593,7 @@ export default function CodingInterview() {
                         cases.
                       </>
                     ) : result.error ? (
-                      <div className="text-red-300">{result.error}</div>
+                      <div className="text-white/75">{result.error}</div>
                     ) : (
                       <div className="space-y-2">
                         <p className="text-white/80">
@@ -602,7 +607,7 @@ export default function CodingInterview() {
                           test cases.
                         </p>
                         {result.autoSubmitted ? (
-                          <p className="text-yellow-300">
+                          <p className="text-white/60">
                             Auto-submitted because the timer finished.
                           </p>
                         ) : null}
@@ -617,11 +622,7 @@ export default function CodingInterview() {
                       result.results.map((r) => (
                         <div
                           key={r.case_no}
-                          className={`rounded-xl border p-4 ${
-                            r.passed
-                              ? "border-green-500/30 bg-green-500/10"
-                              : "border-red-500/30 bg-red-500/10"
-                          }`}
+                          className="rounded-xl border border-white/10 bg-white/5 p-4"
                         >
                           <div className="font-medium text-white">
                             Case {r.case_no} — {r.passed ? "Passed" : "Failed"}
@@ -663,7 +664,7 @@ export default function CodingInterview() {
                 )}
               </div>
             </div>
-          </div>
+          </Surface>
         </div>
       )}
     </div>
