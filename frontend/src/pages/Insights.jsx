@@ -1,68 +1,185 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../api/axios";
 import Footer from "../components/Footer";
+import {
+  TrendingUp, TrendingDown, Star, MessageSquare, BarChart3,
+  CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp,
+} from "lucide-react";
 
+/* ── GlassCard ───────────────────────────────────────────────── */
 function GlassCard({ children, className = "", accent }) {
   const [g, setG] = useState({ x: 50, y: 50 });
   return (
     <motion.div
-      whileHover={{ y: -2 }} transition={{ duration: 0.18 }}
-      onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); setG({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }); }}
-      className={["group relative overflow-hidden rounded-[26px] border border-white/[0.09] bg-gradient-to-b from-white/[0.055] to-white/[0.018] backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.28)]", className].join(" ")}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        setG({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
+      }}
+      className={`group relative overflow-hidden rounded-[24px] border border-white/[0.09] transition-all duration-300 hover:border-white/[0.15] ${className}`}
+      style={{
+        background: "linear-gradient(180deg,rgba(255,255,255,0.055) 0%,rgba(255,255,255,0.018) 100%)",
+        backdropFilter: "blur(20px)",
+      }}
     >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent" />
-      {accent && <div className="absolute -top-12 right-4 h-28 w-28 rounded-full blur-3xl opacity-50" style={{ background: `radial-gradient(circle, ${accent}55, transparent)` }} />}
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100" style={{ background: `radial-gradient(380px circle at ${g.x}% ${g.y}%, rgba(109,95,255,0.09), transparent 40%)` }} />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+      {accent && (
+        <div
+          className="absolute -top-12 right-0 w-32 h-32 rounded-full opacity-40 pointer-events-none"
+          style={{ background: `radial-gradient(circle,${accent}55,transparent)`, filter: "blur(28px)" }}
+        />
+      )}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ background: `radial-gradient(350px circle at ${g.x}% ${g.y}%, rgba(109,95,255,0.07), transparent 50%)` }}
+      />
       <div className="relative z-10">{children}</div>
     </motion.div>
   );
 }
 
+/* ── Badge ───────────────────────────────────────────────────── */
 function Badge({ children, tone = "neutral" }) {
-  const s = { good: "bg-emerald-500/15 border-emerald-500/30 text-emerald-300", bad: "bg-red-500/15 border-red-500/30 text-red-300", neutral: "bg-white/[0.08] border-white/15 text-white/70" };
-  return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold font-mono ${s[tone] || s.neutral}`}>{children}</span>;
-}
-
-function StatCard({ label, value, sub, accent = "#6d5fff" }) {
+  const s = {
+    good:    "bg-emerald-500/15 border-emerald-500/30 text-emerald-300",
+    bad:     "bg-red-500/15 border-red-500/30 text-red-300",
+    neutral: "bg-white/[0.08] border-white/[0.14] text-white/65",
+    info:    "bg-sky-500/15 border-sky-500/30 text-sky-300",
+  };
   return (
-    <GlassCard className="p-5" accent={accent}>
-      <p className="text-[10px] uppercase tracking-widest text-white/38 font-mono mb-4">{label}</p>
-      <p className="text-3xl font-extrabold text-white" style={{ fontFamily: "var(--font-display)" }}>{value}</p>
-      {sub && <p className="mt-2 text-[12px] text-white/38">{sub}</p>}
-    </GlassCard>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold font-mono ${s[tone] || s.neutral}`}>
+      {children}
+    </span>
   );
 }
 
-function AnswerPanel({ title, tone, score, question, feedback }) {
+/* ── Score ring ──────────────────────────────────────────────── */
+function ScoreRing({ score, max = 10, size = 80 }) {
+  const pct = Math.min(100, Math.max(0, (score / max) * 100));
+  const r = 34;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  const color = pct >= 70 ? "#00e5cc" : pct >= 45 ? "#f59e0b" : "#ff4d88";
+
   return (
-    <GlassCard className="p-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h3 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>{title}</h3>
-        {score != null && <Badge tone={tone}>Score: {score}</Badge>}
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="6" />
+        <motion.circle
+          cx="40" cy="40" r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          transform="rotate(-90 40 40)"
+          style={{ filter: `drop-shadow(0 0 6px ${color}88)` }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[15px] font-black text-white">{typeof score === "number" ? score.toFixed(1) : score}</span>
+        <span className="text-[9px] text-white/30 font-mono">/{max}</span>
       </div>
-      {question && <p className="text-sm leading-7 text-white/50 mb-4">Q: <span className="text-white/80">{question}</span></p>}
-      <div className="rounded-xl border border-white/[0.08] bg-black/15 p-4">
-        <p className="text-sm leading-7 text-white/68">{feedback || "No feedback available."}</p>
-      </div>
-    </GlassCard>
+    </div>
   );
 }
 
-function FeedbackList({ items }) {
+/* ── Progress bar ────────────────────────────────────────────── */
+function Bar({ value, max = 10 }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div className="h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="h-full rounded-full"
+        style={{ background: "linear-gradient(90deg,#6d5fff,#00e5cc)" }}
+      />
+    </div>
+  );
+}
+
+/* ── Collapsible answer ──────────────────────────────────────── */
+function AnswerCard({ idx, question, feedback, score }) {
+  const [open, setOpen] = useState(idx === 0);
+  const tone = score >= 7 ? "good" : score >= 4 ? "neutral" : "bad";
+
+  return (
+    <motion.div layout className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-colors"
+      >
+        <div
+          className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
+          style={{ background: "rgba(109,95,255,0.18)", border: "1px solid rgba(109,95,255,0.3)", color: "#a78bfa" }}
+        >
+          {idx + 1}
+        </div>
+        <p className="flex-1 text-[13px] font-semibold text-white/70 truncate">{question || `Answer ${idx + 1}`}</p>
+        {score != null && <Badge tone={tone}>{score}/10</Badge>}
+        <span className="text-white/25 ml-1 flex-shrink-0">
+          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="px-5 pb-4 border-t border-white/[0.06]">
+              {question && (
+                <p className="text-[12px] text-white/35 mt-3 mb-2 font-mono leading-relaxed">
+                  Q: <span className="text-white/55">{question}</span>
+                </p>
+              )}
+              <div className="rounded-xl border border-white/[0.07] bg-black/20 p-4">
+                <p className="text-[13px] leading-7 text-white/62">{feedback || "No feedback available."}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ── Strengths / Weaknesses ──────────────────────────────────── */
+function SwList({ title, items, accent, icon: Icon }) {
   if (!items?.length) return null;
   return (
-    <GlassCard className="p-6">
-      <p className="text-[10px] uppercase tracking-widest text-white/35 font-mono mb-2">Feedback</p>
-      <h3 className="text-xl font-bold text-white mb-5" style={{ fontFamily: "var(--font-display)" }}>AI Feedback Points</h3>
-      <div className="space-y-3">
-        {items.map((fb, i) => (
-          <motion.div key={i} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-            className="flex gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] p-4">
-            <div className="w-5 h-5 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-black font-mono mt-0.5"
-              style={{ background: "rgba(109,95,255,0.2)", border: "1px solid rgba(109,95,255,0.4)", color: "#a78bfa" }}>{i + 1}</div>
-            <p className="text-sm leading-6 text-white/68">{fb}</p>
+    <GlassCard className="p-6" accent={accent}>
+      <div className="flex items-center gap-2 mb-5">
+        <div
+          className="w-7 h-7 rounded-xl flex items-center justify-center"
+          style={{ background: `${accent}18`, border: `1px solid ${accent}30` }}
+        >
+          <Icon className="w-3.5 h-3.5" style={{ color: accent }} />
+        </div>
+        <h3 className="text-[15px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>{title}</h3>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02]"
+          >
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ background: accent }} />
+            <p className="text-[12.5px] text-white/62 leading-relaxed">{item}</p>
           </motion.div>
         ))}
       </div>
@@ -70,168 +187,179 @@ function FeedbackList({ items }) {
   );
 }
 
-function StrengthWeakness({ strengths, weaknesses }) {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {[{ label: "Strengths", items: strengths, tone: "good", accent: "#00e5cc" }, { label: "Areas to Improve", items: weaknesses, tone: "bad", accent: "#ff4d88" }].map(({ label, items, tone, accent }) => (
-        <GlassCard key={label} className="p-6" accent={accent}>
-          <p className="text-[10px] uppercase tracking-widest font-mono mb-2" style={{ color: accent }}>{label}</p>
-          <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>{label}</h3>
-          {items?.length ? (
-            <ul className="space-y-2">
-              {items.map((item, i) => (
-                <li key={i} className="flex gap-2.5 text-sm text-white/65">
-                  <span className="flex-shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full" style={{ background: accent }} />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          ) : <p className="text-sm text-white/35">None identified yet.</p>}
-        </GlassCard>
-      ))}
-    </div>
-  );
+/* ── Loading skeleton ────────────────────────────────────────── */
+function Skeleton({ h = "h-32", className = "" }) {
+  return <div className={`${h} rounded-2xl bg-white/[0.04] animate-pulse ${className}`} />;
 }
 
+/* ── Main ────────────────────────────────────────────────────── */
 export default function Insights() {
-  const nav = useNavigate();
-  const [sp] = useSearchParams();
-  const sessionId = sp.get("session_id") || "";
-  const [data, setData] = useState(null);
-  const [msg, setMsg] = useState("");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get("session_id");
+
+  const [data, setData]     = useState(null);
+  const [msg, setMsg]       = useState("");
   const [loading, setLoading] = useState(true);
-  const [devMode, setDevMode] = useState(false);
-  const isOverall = !sessionId || !!data?.total_sessions;
 
   useEffect(() => {
+    if (!sessionId) { setLoading(false); return; }
+    const url = `/analysis/session/${encodeURIComponent(sessionId)}`;
     (async () => {
-      setLoading(true); setMsg("");
       try {
-        const url = sessionId ? `/insights/${encodeURIComponent(sessionId)}` : "/insights";
         const res = await api.get(url);
         setData(res.data);
-      } catch (e) { setMsg(e?.response?.data?.detail || "Failed to load insights"); }
-      finally { setLoading(false); }
+      } catch (e) {
+        if (e?.response?.status === 401) { localStorage.removeItem("token"); navigate("/login", { replace: true }); }
+        else setMsg(e?.response?.data?.detail || "Failed to load insights.");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [sessionId]);
 
-  return (
-    <div className="space-y-6 py-2">
-      {/* ── Header ─────────────────────── */}
-      <GlassCard className="overflow-hidden p-7 sm:p-9">
-        <div className="absolute -right-12 top-0 w-48 h-48 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle,rgba(0,229,204,0.16),transparent)", filter: "blur(40px)" }} />
-        <div className="absolute -left-10 bottom-0 w-40 h-40 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle,rgba(109,95,255,0.14),transparent)", filter: "blur(40px)" }} />
-
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="section-eyebrow mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00e5cc]" />
-              {isOverall ? "Overall Insights" : "Session Insights"}
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-[0.94] mb-4" style={{ fontFamily: "var(--font-display)" }}>
-              {isOverall ? "Performance Insights" : "Interview Insights"}
-            </h1>
-            <p className="text-sm sm:text-base leading-7 text-white/50 max-w-xl">
-              {isOverall ? "A high-level view of patterns, strengths, and improvement opportunities across all sessions." : `Personalized feedback and highlights for ${sessionId ? sessionId.slice(0, 24) + "…" : "this session"}.`}
-            </p>
+  if (!sessionId) {
+    return (
+      <div className="min-h-screen text-white">
+        <div className="mx-auto max-w-5xl px-4 pt-16 pb-8 text-center">
+          <div
+            className="inline-flex w-16 h-16 rounded-2xl items-center justify-center mb-5"
+            style={{ background: "rgba(109,95,255,0.12)", border: "1px solid rgba(109,95,255,0.22)" }}
+          >
+            <BarChart3 className="w-7 h-7 text-purple-400" />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <motion.button onClick={() => nav(-1)} whileHover={{ scale: 1.02 }}
-              className="px-5 py-2.5 rounded-full border border-white/[0.09] bg-white/[0.04] text-sm font-semibold text-white/75 hover:bg-white/[0.08] transition-all">
-              ← Back
-            </motion.button>
-            <Link to={sessionId ? `/analytics?session_id=${encodeURIComponent(sessionId)}` : "/analytics"}
-              className="px-5 py-2.5 rounded-full text-sm font-bold text-white btn-shimmer"
-              style={{ background: "linear-gradient(135deg,#00e5cc,#6d5fff)" }}>
-              Full Analytics
-            </Link>
-          </div>
+          <h1 className="text-3xl font-extrabold text-white mb-3" style={{ fontFamily: "var(--font-display)" }}>
+            Session Insights
+          </h1>
+          <p className="text-white/40 mb-8 max-w-sm mx-auto">
+            Select a completed session from your Dashboard to view detailed feedback.
+          </p>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all"
+            style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)", boxShadow: "0 0 20px rgba(109,95,255,0.3)" }}
+          >
+            Go to Dashboard
+          </Link>
         </div>
-      </GlassCard>
+        <Footer />
+      </div>
+    );
+  }
 
-      {loading && (
-        <GlassCard className="p-10 text-center">
-          <div className="flex items-center justify-center gap-3 text-white/40 text-sm">
-            <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" strokeOpacity="0.2"/><path d="M12 2a10 10 0 0 1 10 10"/>
-            </svg>
-            Loading insights…
+  return (
+    <div className="min-h-screen text-white">
+      <div className="mx-auto max-w-5xl px-4 pt-12 pb-8">
+
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03]">
+            <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-[11px] font-mono text-white/45 uppercase tracking-widest">Session Insights</span>
           </div>
-        </GlassCard>
-      )}
-      {msg && <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-300">{msg}</div>}
+          <h1 className="text-4xl font-extrabold tracking-tight text-white" style={{ fontFamily: "var(--font-display)" }}>
+            Performance Report
+          </h1>
+          <p className="mt-2 text-white/38 font-mono text-sm">#{sessionId?.slice(-12)}</p>
+        </motion.div>
 
-      {!loading && data && (
-        <>
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Sessions" value={data.total_sessions ?? "—"} accent="#6d5fff" />
-            <StatCard label="Avg Score" value={`${Number(data.avg_score ?? 0).toFixed(1)}/10`} sub="All sessions" accent="#00e5cc" />
-            <StatCard label="Best Domain" value={data.best_domain ?? data.domain?.toUpperCase() ?? "—"} accent="#a78bfa" />
-            <StatCard label="Difficulty" value={data.difficulty ?? "—"} accent="#ff4d88" />
+        {/* Error */}
+        {msg && (
+          <div className="mb-6 flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-red-500/20 bg-red-500/[0.08]">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <p className="text-[13px] text-red-300">{msg}</p>
           </div>
+        )}
 
-          {/* Strengths / Weaknesses */}
-          <StrengthWeakness strengths={data.strengths || data.top_strengths} weaknesses={data.weaknesses || data.areas_to_improve} />
-
-          {/* Feedback list */}
-          <FeedbackList items={data.feedback || data.top_feedback} />
-
-          {/* Best / worst (session only) */}
-          {!isOverall && (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <AnswerPanel title="Best Answer" tone="good" score={data.best_answer?.score} question={data.best_answer?.question} feedback={data.best_answer?.feedback} />
-              <AnswerPanel title="Needs Work" tone="bad" score={data.weakest_answer?.score} question={data.weakest_answer?.question} feedback={data.weakest_answer?.feedback} />
-            </div>
-          )}
-
-          {/* Domain distribution (overall only) */}
-          {isOverall && data.domains && Object.keys(data.domains).length > 0 && (
-            <GlassCard className="p-6">
-              <div className="flex items-center justify-between gap-3 mb-5">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-white/35 font-mono mb-1">Domain Distribution</p>
-                  <h3 className="text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Practice spread</h3>
-                </div>
-                <Badge>{data.total_sessions ?? 0} sessions</Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {Object.entries(data.domains).map(([domain, count]) => (
-                  <div key={domain} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-                    <p className="text-[10px] uppercase tracking-widest text-white/35 font-mono mb-2">Domain</p>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-bold uppercase text-white">{domain}</span>
-                      <Badge>{count}</Badge>
+        {loading ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4"><Skeleton /><Skeleton /><Skeleton /></div>
+            <Skeleton h="h-48" />
+            <Skeleton h="h-64" />
+          </div>
+        ) : data ? (
+          <div className="space-y-6">
+            {/* Score overview */}
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { label: "Overall Score", value: data.total_score ?? data.overall_score, max: 10, accent: "#6d5fff" },
+                { label: "Technical",     value: data.technical_score,                   max: 10, accent: "#00e5cc" },
+                { label: "Communication", value: data.communication_score,               max: 10, accent: "#a78bfa" },
+              ].filter(s => s.value != null).map(({ label, value, max, accent }) => (
+                <GlassCard key={label} className="p-5" accent={accent}>
+                  <p className="text-[10px] font-mono text-white/28 uppercase tracking-widest mb-4">{label}</p>
+                  <div className="flex items-end gap-3">
+                    <ScoreRing score={Number(value)} max={max} size={72} />
+                    <div className="flex-1">
+                      <Bar value={Number(value)} max={max} />
+                      <p className="text-[11px] text-white/30 mt-1 font-mono">{Number(value).toFixed(1)} / {max}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </GlassCard>
-          )}
-
-          {/* Dev mode */}
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-white/35 font-mono mb-1">Developer Mode</p>
-                <h3 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Raw JSON preview</h3>
-              </div>
-              <motion.button
-                onClick={() => setDevMode(v => !v)} whileHover={{ scale: 1.03 }}
-                className={`rounded-full border px-4 py-2 text-xs font-bold font-mono transition-all ${devMode ? "border-[#6d5fff] bg-[#6d5fff]/20 text-[#a78bfa]" : "border-white/[0.1] bg-white/[0.04] text-white/45 hover:text-white"}`}
-              >
-                {devMode ? "ON" : "OFF"}
-              </motion.button>
+                </GlassCard>
+              ))}
             </div>
-            {devMode && (
-              <pre className="mt-5 overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 text-[11px] text-white/60 font-mono max-h-[400px]">
-                {JSON.stringify(data, null, 2)}
-              </pre>
-            )}
-          </GlassCard>
-        </>
-      )}
 
+            {/* Strengths + Weaknesses */}
+            {(data.strengths?.length || data.weaknesses?.length) && (
+              <div className="grid sm:grid-cols-2 gap-4">
+                {data.strengths?.length > 0 && (
+                  <SwList title="Strengths" items={data.strengths} accent="#00e5cc" icon={CheckCircle} />
+                )}
+                {data.weaknesses?.length > 0 && (
+                  <SwList title="Areas to Improve" items={data.weaknesses} accent="#ff4d88" icon={XCircle} />
+                )}
+              </div>
+            )}
+
+            {/* AI Feedback */}
+            {data.overall_feedback && (
+              <GlassCard className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <MessageSquare className="w-4 h-4 text-purple-400" />
+                  <h2 className="text-[15px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+                    AI Overall Feedback
+                  </h2>
+                </div>
+                <div className="rounded-xl border border-white/[0.07] bg-black/20 p-5">
+                  <p className="text-[13.5px] text-white/65 leading-[1.85]">{data.overall_feedback}</p>
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Per-answer breakdown */}
+            {data.answers?.length > 0 && (
+              <GlassCard className="p-6">
+                <div className="flex items-center gap-2 mb-5">
+                  <Star className="w-4 h-4 text-amber-400" />
+                  <h2 className="text-[15px] font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+                    Answer Breakdown
+                  </h2>
+                  <Badge tone="neutral">{data.answers.length} answers</Badge>
+                </div>
+                <div className="space-y-2">
+                  {data.answers.map((ans, i) => (
+                    <AnswerCard
+                      key={i}
+                      idx={i}
+                      question={ans.question}
+                      feedback={ans.feedback}
+                      score={ans.score}
+                    />
+                  ))}
+                </div>
+              </GlassCard>
+            )}
+          </div>
+        ) : !msg && (
+          <div className="text-center py-16">
+            <p className="text-white/35">No data available for this session.</p>
+          </div>
+        )}
+      </div>
       <Footer />
     </div>
   );

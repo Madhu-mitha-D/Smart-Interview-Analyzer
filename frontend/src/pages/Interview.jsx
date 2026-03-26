@@ -1,68 +1,40 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { Brain, FileText, Code2, ArrowRight, Zap, Shield, Clock } from "lucide-react";
 import Footer from "../components/Footer";
-import {
-  Brain,
-  FileText,
-  Code2,
-  ArrowRight,
-  Sparkles,
-  Layers3,
-  Target,
-} from "lucide-react";
 
-function SolidGlowCard({ children, className = "", hasPersistentHover = false, glow = "violet" }) {
-  const glowMap = {
-    violet: {
-      border: "hover:border-[#6d5fff]/40",
-      g1: "bg-[#6d5fff]/35",
-      g2: "bg-[#00e5cc]/18",
-    },
-    cyan: {
-      border: "hover:border-[#00e5cc]/35",
-      g1: "bg-[#00e5cc]/28",
-      g2: "bg-[#6d5fff]/18",
-    },
-    pink: {
-      border: "hover:border-[#ff4d88]/35",
-      g1: "bg-[#ff4d88]/25",
-      g2: "bg-[#6d5fff]/16",
-    },
+/* ── Shared card ─────────────────────────────────────────────── */
+function GlowCard({ children, className = "", glow = "violet", onClick }) {
+  const glows = {
+    violet: { border: "rgba(109,95,255,0.35)", blob: "#6d5fff" },
+    cyan:   { border: "rgba(0,229,204,0.3)",   blob: "#00e5cc" },
+    pink:   { border: "rgba(255,77,136,0.3)",   blob: "#ff4d88" },
   };
-
-  const current = glowMap[glow] || glowMap.violet;
+  const c = glows[glow] || glows.violet;
 
   return (
     <motion.div
-      whileHover={{ y: -3, scale: 1.002 }}
+      whileHover={{ y: -4, scale: 1.005 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className={[
-        "group relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#09090f] transition-all duration-300",
-        current.border,
-        className,
-      ].join(" ")}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[28px] cursor-pointer border border-white/[0.07] transition-all duration-300 hover:border-[${c.border}] ${className}`}
+      style={{
+        background: "linear-gradient(180deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.015) 100%)",
+        backdropFilter: "blur(24px)",
+      }}
     >
+      {/* Hover glow blob */}
       <div
-        className={[
-          "absolute inset-0 transition-opacity duration-300",
-          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-        ].join(" ")}
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:4px_4px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.10),transparent_34%)]" />
-      </div>
-
-      <div
-        className={[
-          "pointer-events-none absolute inset-0 transition-opacity duration-300",
-          hasPersistentHover ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-        ].join(" ")}
-      >
-        <div className={`absolute -right-20 -top-20 h-72 w-72 rounded-full ${current.g1} blur-[130px]`} />
-        <div className={`absolute left-[20%] top-[20%] h-48 w-48 rounded-full ${current.g2} blur-[110px]`} />
-      </div>
-
+        className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: `radial-gradient(circle,${c.blob}30,transparent 70%)`, filter: "blur(40px)" }}
+      />
+      {/* Top shimmer */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+      {/* Hover border */}
+      <div
+        className="absolute inset-0 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{ boxShadow: `inset 0 0 0 1px ${c.border}` }}
+      />
       <div className="relative z-10">{children}</div>
     </motion.div>
   );
@@ -71,353 +43,216 @@ function SolidGlowCard({ children, className = "", hasPersistentHover = false, g
 const MODES = [
   {
     id: "domain",
+    icon: Brain,
     title: "Domain Interview",
     route: "/interview/domain",
     tag: "Recommended",
+    tagColor: "#6d5fff",
     accent: "#6d5fff",
-    desc: "Practice core interview questions by domain and difficulty with guided AI flow.",
-    tags: ["HR", "Java", "DBMS", "AI"],
+    accentBg: "rgba(109,95,255,0.12)",
+    accentBorder: "rgba(109,95,255,0.3)",
     glow: "violet",
-    icon: Brain,
+    desc: "Practice core interview questions by domain and difficulty. Get real-time AI feedback and scoring.",
+    chips: ["HR & Behavioral", "Java & OOP", "DBMS", "AI & ML", "+8 more"],
+    perks: ["Adaptive difficulty", "Voice responses", "Instant scoring"],
   },
   {
     id: "resume",
+    icon: FileText,
     title: "Resume Interview",
     route: "/interview/resume",
     tag: "Personalized",
+    tagColor: "#00e5cc",
     accent: "#00e5cc",
-    desc: "Generate project-based and skill-based questions from your resume.",
-    tags: ["Projects", "Skills"],
+    accentBg: "rgba(0,229,204,0.1)",
+    accentBorder: "rgba(0,229,204,0.28)",
     glow: "cyan",
-    icon: FileText,
+    desc: "Upload your resume and get custom questions on your actual projects, skills, and experience.",
+    chips: ["Project deep-dives", "Skill probing", "Experience review"],
+    perks: ["Auto-parsed resume", "Context-aware Qs", "Career insights"],
   },
   {
     id: "coding",
+    icon: Code2,
     title: "Coding Interview",
     route: "/interview/coding",
     tag: "Technical",
+    tagColor: "#a78bfa",
     accent: "#a78bfa",
-    desc: "Practice coding rounds in a focused workspace built for problem solving.",
-    tags: ["DSA", "Logic"],
+    accentBg: "rgba(167,139,250,0.1)",
+    accentBorder: "rgba(167,139,250,0.28)",
     glow: "pink",
-    icon: Code2,
+    desc: "Solve coding problems in a focused in-browser IDE. Real interview-grade challenges across all levels.",
+    chips: ["Arrays & Trees", "DP & Graphs", "System Design"],
+    perks: ["Live code execution", "Multi-language", "Hint system"],
   },
 ];
 
-function ModeCard({ mode, onClick }) {
-  const Icon = mode.icon;
+const FEATS = [
+  { icon: Zap,    label: "AI-Powered",    desc: "Real-time feedback from LLMs" },
+  { icon: Shield, label: "Safe Practice",  desc: "Low-stakes, high-confidence prep" },
+  { icon: Clock,  label: "10-min sessions",desc: "Bite-sized, consistent growth" },
+];
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
-      <SolidGlowCard className="flex h-full flex-col p-6" glow={mode.glow}>
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-2xl"
-            style={{
-              background: `${mode.accent}14`,
-              border: `1px solid ${mode.accent}35`,
-            }}
-          >
-            <Icon className="h-5 w-5" style={{ color: mode.accent }} />
-          </div>
-
-          <span
-            className="rounded-full px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em]"
-            style={{
-              background: `${mode.accent}14`,
-              border: `1px solid ${mode.accent}30`,
-              color: mode.accent,
-            }}
-          >
-            {mode.tag}
-          </span>
-        </div>
-
-        <h3
-          className="mb-3 text-2xl font-extrabold text-white"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          {mode.title}
-        </h3>
-
-        <p className="flex-1 text-sm leading-7 text-white/54">{mode.desc}</p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {mode.tags.map((t) => (
-            <span
-              key={t}
-              className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] text-white/40"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-
-        <motion.button
-          onClick={onClick}
-          whileHover={{ scale: 1.03, y: -1 }}
-          whileTap={{ scale: 0.97 }}
-          className="btn-shimmer mt-7 inline-flex items-center gap-2.5 rounded-full px-5 py-3 text-sm font-bold text-white"
-          style={{
-            background: `linear-gradient(135deg, ${mode.accent}, #00e5cc)`,
-            boxShadow: `0 0 22px ${mode.accent}40`,
-          }}
-        >
-          Open Workspace
-          <ArrowRight className="h-3.5 w-3.5" />
-        </motion.button>
-      </SolidGlowCard>
-    </motion.div>
-  );
-}
+const stagger = {
+  container: { transition: { staggerChildren: 0.1 } },
+  item: { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
 
 export default function Interview() {
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
   return (
-    <div className="space-y-8 py-4">
-      <SolidGlowCard className="overflow-hidden p-8 sm:p-10" hasPersistentHover glow="violet">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-[#6d5fff]" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/38">
-                Interview Workspace
-              </span>
-            </div>
+    <div className="min-h-screen text-white">
+      <div className="mx-auto max-w-5xl px-4 pt-16 pb-8">
 
-            <h1
-              className="text-5xl font-extrabold leading-[0.92] text-white sm:text-6xl lg:text-7xl"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Choose Your
-              <br />
-              Interview Type
-            </h1>
-
-            <p className="mt-5 max-w-md text-sm leading-8 text-white/58 sm:text-base">
-              Pick the experience that matches your preparation goal. Each mode opens in a focused workspace built for that interview format.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <motion.button
-                onClick={() => nav("/interview/domain")}
-                whileHover={{ scale: 1.03, y: -1 }}
-                whileTap={{ scale: 0.97 }}
-                className="btn-shimmer rounded-full px-6 py-3 text-sm font-bold text-white"
-                style={{
-                  background: "linear-gradient(135deg,#6d5fff,#00e5cc)",
-                  boxShadow: "0 0 28px rgba(109,95,255,0.4)",
-                }}
-              >
-                Start Domain Interview
-              </motion.button>
-
-              <motion.button
-                onClick={() => nav("/dashboard")}
-                whileHover={{ scale: 1.02 }}
-                className="rounded-full border border-white/[0.08] bg-white/[0.06] px-6 py-3 text-sm font-semibold text-white/78 transition-all hover:bg-white/[0.10]"
-              >
-                Back to Dashboard
-              </motion.button>
-            </div>
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-16 text-center"
+        >
+          {/* Pill badge */}
+          <div className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.04]">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "linear-gradient(135deg,#6d5fff,#00e5cc)" }} />
+            <span className="text-[11px] font-mono text-white/50 uppercase tracking-widest">Choose your mode</span>
           </div>
 
-          <div className="grid gap-3">
-            {[
-              {
-                title: "Structured interview flow",
-                desc: "Practice with a cleaner experience instead of random disconnected questions.",
-                icon: Layers3,
-                glow: "violet",
-              },
-              {
-                title: "Mode-specific workspaces",
-                desc: "Each interview type opens in its own tailored environment.",
-                icon: Target,
-                glow: "cyan",
-              },
-              {
-                title: "Better preparation focus",
-                desc: "Choose theory, resume, or coding depending on what you need most.",
-                icon: Sparkles,
-                glow: "pink",
-              },
-            ].map((item, i) => {
-              const InfoIcon = item.icon;
-              return (
-                <SolidGlowCard key={item.title} className="p-4" glow={item.glow}>
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.05]">
-                      <InfoIcon className="h-4 w-4 text-white/60" />
-                    </div>
-                    <div>
-                      <p className="mb-1 text-[14px] font-bold text-white">{item.title}</p>
-                      <p className="text-[12px] leading-6 text-white/46">{item.desc}</p>
-                    </div>
-                  </div>
-                </SolidGlowCard>
-              );
-            })}
-          </div>
-        </div>
-      </SolidGlowCard>
-
-      <div className="grid gap-5 lg:grid-cols-3">
-        {MODES.map((mode) => (
-          <ModeCard key={mode.id} mode={mode} onClick={() => nav(mode.route)} />
-        ))}
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-        <SolidGlowCard className="p-7" glow="violet">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#6d5fff]" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/38">
-              How it works
-            </span>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              {
-                n: "01",
-                title: "Pick a mode",
-                desc: "Choose the interview type that matches what you want to prepare for today.",
-              },
-              {
-                n: "02",
-                title: "Enter the workspace",
-                desc: "Open a dedicated environment built specifically for that interview format.",
-              },
-              {
-                n: "03",
-                title: "Practice with intent",
-                desc: "Focus on communication, theory, coding, or resume discussion in the right flow.",
-              },
-            ].map((step) => (
-              <div
-                key={step.n}
-                className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-5"
-              >
-                <div
-                  className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl font-mono text-[12px] font-black"
-                  style={{
-                    background: "rgba(109,95,255,0.15)",
-                    border: "1px solid rgba(109,95,255,0.3)",
-                    color: "#a78bfa",
-                  }}
-                >
-                  {step.n}
-                </div>
-                <h3
-                  className="mb-2 text-[14px] font-bold text-white"
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  {step.title}
-                </h3>
-                <p className="text-[12px] leading-6 text-white/45">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </SolidGlowCard>
-
-        <SolidGlowCard className="p-7" glow="cyan">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#00e5cc]" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/38">
-              Suggested path
-            </span>
-          </div>
-
-          <h2
-            className="mb-5 text-2xl font-bold text-white"
+          <h1
+            className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-4 leading-[1.08]"
             style={{ fontFamily: "var(--font-display)" }}
           >
-            A simple preparation order
-          </h2>
+            Interview{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: "linear-gradient(135deg,#6d5fff,#00e5cc)" }}
+            >
+              Practice
+            </span>
+          </h1>
+          <p className="text-lg text-white/40 max-w-xl mx-auto leading-relaxed">
+            Three ways to sharpen your skills — pick a mode and start your session now.
+          </p>
 
-          <div className="space-y-3">
-            {[
-              {
-                step: "1st",
-                title: "Domain Interview",
-                desc: "Build confidence in fundamentals and communication first.",
-                accent: "#6d5fff",
-              },
-              {
-                step: "2nd",
-                title: "Resume Interview",
-                desc: "Prepare for project and skill discussions recruiters ask.",
-                accent: "#00e5cc",
-              },
-              {
-                step: "3rd",
-                title: "Coding Interview",
-                desc: "Strengthen technical problem solving last.",
-                accent: "#a78bfa",
-              },
-            ].map(({ step, title, desc, accent }) => (
-              <div
-                key={step}
-                className="flex gap-3 rounded-xl border border-white/[0.07] bg-white/[0.04] p-4"
-              >
-                <span
-                  className="mt-0.5 flex-shrink-0 rounded-md px-2 py-1 font-mono text-[10px] font-black"
-                  style={{ background: `${accent}18`, color: accent }}
+          {/* Mini feat row */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
+            {FEATS.map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(109,95,255,0.12)", border: "1px solid rgba(109,95,255,0.22)" }}
                 >
-                  {step}
-                </span>
-                <div>
-                  <p className="text-[13px] font-bold text-white">{title}</p>
-                  <p className="mt-0.5 text-[12px] leading-6 text-white/42">{desc}</p>
+                  <Icon className="w-3.5 h-3.5" style={{ color: "#a78bfa" }} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[11px] font-bold text-white/70 leading-none">{label}</p>
+                  <p className="text-[10px] text-white/35 leading-none mt-0.5">{desc}</p>
                 </div>
               </div>
             ))}
           </div>
-        </SolidGlowCard>
-      </div>
+        </motion.div>
 
-      <SolidGlowCard className="p-7" glow="pink">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#ff4d88]" />
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/38">
-                Quick Start
-              </span>
-            </div>
-
-            <h2
-              className="mb-2 text-2xl font-bold text-white sm:text-3xl"
-              style={{ fontFamily: "var(--font-display)" }}
-            >
-              Ready to begin your next session?
-            </h2>
-            <p className="max-w-md text-sm leading-7 text-white/48">
-              Choose the mode that fits your goal and enter a workspace built for that interview experience.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            {MODES.map((mode) => (
-              <motion.button
-                key={mode.id}
-                onClick={() => nav(mode.route)}
-                whileHover={{ scale: 1.04, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                className="btn-shimmer rounded-full px-5 py-2.5 text-sm font-bold text-white"
-                style={{
-                  background: `linear-gradient(135deg, ${mode.accent}, #00e5cc)`,
-                  boxShadow: `0 0 22px ${mode.accent}35`,
+        {/* ── Mode cards ───────────────────────────────────────── */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.12 } },
+          }}
+          className="grid gap-5 sm:grid-cols-3"
+        >
+          {MODES.map((m) => {
+            const Icon = m.icon;
+            return (
+              <motion.div
+                key={m.id}
+                variants={{
+                  hidden: { opacity: 0, y: 28 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
                 }}
               >
-                {mode.title.split(" ")[0]}
-              </motion.button>
-            ))}
-          </div>
-        </div>
-      </SolidGlowCard>
+                <GlowCard glow={m.glow} onClick={() => navigate(m.route)} className="h-full flex flex-col p-6">
+                  {/* Tag + icon row */}
+                  <div className="flex items-start justify-between mb-5">
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: m.accentBg, border: `1px solid ${m.accentBorder}` }}
+                    >
+                      <Icon className="w-5 h-5" style={{ color: m.accent }} />
+                    </div>
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full font-mono"
+                      style={{ background: `${m.accent}18`, border: `1px solid ${m.accent}35`, color: m.accent }}
+                    >
+                      {m.tag}
+                    </span>
+                  </div>
+
+                  <h2
+                    className="text-[18px] font-extrabold text-white mb-2"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {m.title}
+                  </h2>
+                  <p className="text-[13px] text-white/45 leading-relaxed mb-5 flex-1">
+                    {m.desc}
+                  </p>
+
+                  {/* Topic chips */}
+                  <div className="flex flex-wrap gap-1.5 mb-5">
+                    {m.chips.map((c) => (
+                      <span
+                        key={c}
+                        className="text-[10px] font-mono text-white/35 px-2 py-1 rounded-full border border-white/[0.08] bg-white/[0.03]"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Perks */}
+                  <div className="space-y-1.5 mb-5">
+                    {m.perks.map((p) => (
+                      <div key={p} className="flex items-center gap-2">
+                        <svg viewBox="0 0 12 12" fill="none" stroke={m.accent} strokeWidth="1.8" className="w-3 h-3 flex-shrink-0">
+                          <path d="m2 6 3 3 5-5" />
+                        </svg>
+                        <span className="text-[11.5px] text-white/50">{p}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  <div
+                    className="flex items-center justify-between px-4 py-2.5 rounded-2xl group-hover:opacity-100 opacity-60 transition-opacity"
+                    style={{ background: m.accentBg, border: `1px solid ${m.accentBorder}` }}
+                  >
+                    <span className="text-[12px] font-bold" style={{ color: m.accent }}>
+                      Start Session
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" style={{ color: m.accent }} />
+                  </div>
+                </GlowCard>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* ── Bottom tip ───────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="mt-10 text-center"
+        >
+          <p className="text-[12px] text-white/22 font-mono">
+            Sessions auto-save · Feedback available immediately · No limits
+          </p>
+        </motion.div>
+      </div>
 
       <Footer />
     </div>
