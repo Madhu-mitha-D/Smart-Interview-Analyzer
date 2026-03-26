@@ -14,6 +14,7 @@ import Analytics from "./pages/Analytics";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import ScrollToTop from "./components/ScrollToTop";
 
 function RequireAuth({ children }) {
   const token = localStorage.getItem("token");
@@ -96,6 +97,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AppRoutes />
     </BrowserRouter>
   );
