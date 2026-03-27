@@ -50,7 +50,6 @@ export default function Insights() {
   const [data, setData] = useState(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
-  const [devMode, setDevMode] = useState(false);
 
   const isOverall = !sessionId || !!data?.overall;
 
@@ -127,20 +126,6 @@ export default function Insights() {
               Analytics
             </Link>
           </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <span className="text-xs text-white/60">Developer mode</span>
-          <button
-            onClick={() => setDevMode((v) => !v)}
-            className={`rounded-full border px-3 py-1 text-xs transition ${
-              devMode
-                ? "border-white bg-white text-black"
-                : "border-white/15 bg-white/5 text-white hover:bg-white/10"
-            }`}
-          >
-            {devMode ? "ON" : "OFF"}
-          </button>
         </div>
 
         {msg && (
@@ -361,19 +346,6 @@ export default function Insights() {
                 </Surface>
               </div>
             )}
-
-            {devMode ? (
-              <Surface className="p-6">
-                <details>
-                  <summary className="cursor-pointer text-white/80">
-                    Developer: raw JSON
-                  </summary>
-                  <pre className="mt-3 overflow-auto rounded-xl bg-black/40 p-4 text-xs">
-                    {JSON.stringify(data, null, 2)}
-                  </pre>
-                </details>
-              </Surface>
-            ) : null}
           </div>
         )}
       </motion.div>

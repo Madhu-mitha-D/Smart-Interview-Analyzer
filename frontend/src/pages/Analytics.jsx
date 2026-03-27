@@ -173,7 +173,6 @@ export default function Analytics() {
   const [data, setData] = useState(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
-  const [showRaw, setShowRaw] = useState(false);
 
   const isOverall = !sessionId || !!data?.overall;
 
@@ -247,13 +246,6 @@ export default function Analytics() {
             >
               Insights
             </Link>
-
-            <button
-              onClick={() => setShowRaw((v) => !v)}
-              className="rounded-xl border border-white/20 px-4 py-2 transition hover:bg-white/10"
-            >
-              {showRaw ? "Hide JSON" : "Show JSON"}
-            </button>
           </div>
         </div>
 
@@ -336,15 +328,6 @@ export default function Analytics() {
                 )}
               />
             </div>
-
-            {showRaw ? (
-              <Surface className="p-6">
-                <h2 className="text-xl font-semibold text-white">Raw JSON</h2>
-                <pre className="mt-4 overflow-auto rounded-xl bg-black/40 p-4 text-xs">
-                  {JSON.stringify(data, null, 2)}
-                </pre>
-              </Surface>
-            ) : null}
           </div>
         ) : (
           <div className="mt-6 grid gap-4">
@@ -570,15 +553,6 @@ export default function Analytics() {
                 )}
               </div>
             </Surface>
-
-            {showRaw ? (
-              <Surface className="p-6">
-                <h2 className="text-xl font-semibold text-white">Raw JSON</h2>
-                <pre className="mt-4 overflow-auto rounded-xl bg-black/40 p-4 text-xs">
-                  {JSON.stringify(data, null, 2)}
-                </pre>
-              </Surface>
-            ) : null}
           </div>
         )}
       </motion.div>
