@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { LayoutDashboard } from "lucide-react";
 import ShimmerText from "./shimmer-text";
 
 function LetterReveal({ text, start = false, className = "" }) {
@@ -148,17 +149,12 @@ export default function IntroAnimation({ onComplete }) {
                 flexShrink: 0,
               }}
             >
-              <span
-                style={{
-                  fontSize: "28px",
-                  fontWeight: 900,
-                  color: "#fff",
-                  fontFamily: "'Bricolage Grotesque', system-ui, sans-serif",
-                  letterSpacing: "-1px",
-                }}
-              >
-                SI
-              </span>
+              <LayoutDashboard
+                size={30}
+                strokeWidth={2}
+                color="#ffffff"
+                style={{ opacity: 0.92 }}
+              />
             </motion.div>
 
             <div style={{ display: "flex", alignItems: "center", minHeight: "80px" }}>
