@@ -403,10 +403,10 @@ export default function Home() {
       >
         <GlassCard className="px-8 py-10">
           <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
-            <StatBadge value={500} label="Practice Sessions" />
-            <StatBadge value={12} label="Interview Domains" />
-            <StatBadge value={98} label="Questions Bank" />
-            <StatBadge value={40} label="Coding Problems" />
+            <StatBadge value={3} label="Practice Sessions" />
+            <StatBadge value={4} label="Interview Domains" />
+            <StatBadge value={50} label="Questions Bank" />
+            <StatBadge value={15} label="Coding Problems" />
           </div>
         </GlassCard>
       </motion.section>

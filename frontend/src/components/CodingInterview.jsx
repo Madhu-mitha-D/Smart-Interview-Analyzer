@@ -57,6 +57,104 @@ function StatPill({ label, value, warn = false }) {
   );
 }
 
+function StatusBadge({ passed, text }) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold",
+        passed
+          ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-300"
+          : "border-red-500/30 bg-red-500/12 text-red-300",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "mr-1.5 h-1.5 w-1.5 rounded-full",
+          passed ? "bg-emerald-400" : "bg-red-400",
+        ].join(" ")}
+      />
+      {text}
+    </span>
+  );
+}
+
+function SummaryCard({ label, value, tone = "default", sub }) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-500/20 bg-emerald-500/[0.08]"
+      : tone === "danger"
+      ? "border-red-500/20 bg-red-500/[0.08]"
+      : "border-white/10 bg-white/[0.04]";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-bold text-white">{value}</p>
+      {sub ? <p className="mt-1 text-xs text-white/45">{sub}</p> : null}
+    </div>
+  );
+}
+
+function ResultBanner({ result }) {
+  if (!result) return null;
+
+  const passed = !!result.passed;
+  const title = result.error
+    ? "Execution Error"
+    : passed
+    ? "Accepted"
+    : "Wrong Answer";
+
+  const desc = result.error
+    ? result.error
+    : passed
+    ? `Passed ${result.passed_count} / ${result.total_count} test cases successfully.`
+    : `Passed ${result.passed_count} / ${result.total_count} test cases.`;
+
+  return (
+    <div
+      className={[
+        "rounded-2xl border px-4 py-4",
+        result.error
+          ? "border-red-500/25 bg-red-500/[0.08]"
+          : passed
+          ? "border-emerald-500/25 bg-emerald-500/[0.08]"
+          : "border-amber-500/25 bg-amber-500/[0.08]",
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              passed={!result.error && passed}
+              text={title}
+            />
+          </div>
+          <p className="mt-2 text-sm text-white/80">{desc}</p>
+          {result.autoSubmitted ? (
+            <p className="mt-1 text-xs text-white/50">
+              Auto-submitted because the timer finished.
+            </p>
+          ) : null}
+        </div>
+
+        {!result.error && (
+          <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Score
+            </p>
+            <p className="mt-1 text-2xl font-bold text-white">
+              {result.score} <span className="text-sm text-white/45">/ 10</span>
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function buildCodeFeedback({ code, result, problem }) {
   const feedback = [];
   if (!result) return feedback;
@@ -109,6 +207,69 @@ function Surface({ children, className = "" }) {
       ].join(" ")}
     >
       {children}
+    </div>
+  );
+}
+
+function ResultCaseCard({ item }) {
+  const passed = !!item.passed;
+
+  return (
+    <div
+      className={[
+        "rounded-2xl border p-4",
+        passed
+          ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+          : "border-red-500/20 bg-red-500/[0.06]",
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-medium text-white">Case {item.case_no}</p>
+        <StatusBadge
+          passed={passed}
+          text={passed ? "Passed" : "Failed"}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3">
+        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+          <p className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/35">
+            Input
+          </p>
+          <pre className="overflow-x-auto text-sm text-white/80">
+            {JSON.stringify(item.input, null, 2)}
+          </pre>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+          <p className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/35">
+            Expected
+          </p>
+          <pre className="overflow-x-auto text-sm text-white/80">
+            {JSON.stringify(item.expected, null, 2)}
+          </pre>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+          <p className="mb-1 text-[10px] uppercase tracking-[0.18em] text-white/35">
+            Actual
+          </p>
+          <pre className="overflow-x-auto text-sm text-white/80">
+            {JSON.stringify(item.actual, null, 2)}
+          </pre>
+        </div>
+
+        {item.error ? (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/[0.08] p-3">
+            <p className="mb-1 text-[10px] uppercase tracking-[0.18em] text-red-300/80">
+              Error
+            </p>
+            <pre className="overflow-x-auto text-sm text-red-200">
+              {item.error}
+            </pre>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -166,7 +327,6 @@ export default function CodingInterview() {
 
   useEffect(() => {
     if (!result || !resultSectionRef.current) return;
-
     setActiveBottomTab("results");
 
     setTimeout(() => {
@@ -583,82 +743,94 @@ export default function CodingInterview() {
 
               <div
                 ref={resultSectionRef}
-                className="mt-4 min-h-[180px] rounded-2xl border border-white/10 bg-black/25 p-4"
+                className="mt-4 min-h-[220px] rounded-2xl border border-white/10 bg-black/25 p-4"
               >
                 {activeBottomTab === "output" && (
-                  <div className="text-sm text-white/65">
+                  <div className="space-y-4">
                     {!result ? (
-                      <>
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/65">
                         Submit your solution to evaluate it against hidden test
                         cases.
-                      </>
-                    ) : result.error ? (
-                      <div className="text-white/75">{result.error}</div>
-                    ) : (
-                      <div className="space-y-2">
-                        <p className="text-white/80">
-                          Score:{" "}
-                          <span className="font-semibold">
-                            {result.score} / 10
-                          </span>
-                        </p>
-                        <p>
-                          Passed {result.passed_count} / {result.total_count} hidden
-                          test cases.
-                        </p>
-                        {result.autoSubmitted ? (
-                          <p className="text-white/60">
-                            Auto-submitted because the timer finished.
-                          </p>
-                        ) : null}
                       </div>
+                    ) : (
+                      <>
+                        <ResultBanner result={result} />
+
+                        {!result.error && (
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <SummaryCard
+                              label="Test Cases"
+                              value={`${result.passed_count} / ${result.total_count}`}
+                              tone={result.passed ? "success" : "danger"}
+                            />
+                            <SummaryCard
+                              label="Score"
+                              value={`${result.score} / 10`}
+                              tone={result.passed ? "success" : "default"}
+                            />
+                            <SummaryCard
+                              label="Submission"
+                              value={result.autoSubmitted ? "Auto" : "Manual"}
+                              sub={result.autoSubmitted ? "Timer finished" : "Submitted by user"}
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
 
                 {activeBottomTab === "results" && (
-                  <div className="space-y-3">
-                    {result?.results?.length ? (
-                      result.results.map((r) => (
-                        <div
-                          key={r.case_no}
-                          className="rounded-xl border border-white/10 bg-white/5 p-4"
-                        >
-                          <div className="font-medium text-white">
-                            Case {r.case_no} — {r.passed ? "Passed" : "Failed"}
-                          </div>
-
-                          <div className="mt-2 space-y-1 text-sm text-white/70">
-                            <div>Input: {JSON.stringify(r.input)}</div>
-                            <div>Expected: {JSON.stringify(r.expected)}</div>
-                            <div>Actual: {JSON.stringify(r.actual)}</div>
-                            {r.error ? <div>Error: {r.error}</div> : null}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
+                  <div className="space-y-4">
+                    {!result ? (
                       <p className="text-sm text-white/60">
                         No submission results yet.
                       </p>
+                    ) : result.error ? (
+                      <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.08] p-4">
+                        <div className="mb-2">
+                          <StatusBadge passed={false} text="Execution Error" />
+                        </div>
+                        <pre className="overflow-x-auto text-sm text-red-200 whitespace-pre-wrap">
+                          {result.error}
+                        </pre>
+                      </div>
+                    ) : result?.results?.length ? (
+                      result.results.map((r) => (
+                        <ResultCaseCard key={r.case_no} item={r} />
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/60">
+                        Hidden test case summary is available, but detailed case data is not present.
+                      </div>
                     )}
                   </div>
                 )}
 
                 {activeBottomTab === "feedback" && (
-                  <div className="space-y-3">
-                    {feedback.length > 0 ? (
-                      feedback.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75"
-                        >
-                          • {item}
-                        </div>
-                      ))
-                    ) : (
+                  <div className="space-y-4">
+                    {!result ? (
                       <p className="text-sm text-white/60">
                         Feedback will appear after submission.
                       </p>
+                    ) : (
+                      <>
+                        <ResultBanner result={result} />
+                        {feedback.length > 0 ? (
+                          feedback.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white/75"
+                            >
+                              • {item}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-white/60">
+                            No feedback available.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
